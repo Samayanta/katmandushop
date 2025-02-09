@@ -1,4 +1,4 @@
-const paypal = require("../../helpers/paypal");
+const khaltiService = require("../../helpers/khalti");
 const Order = require("../../models/Order");
 const Cart = require("../../models/Cart");
 const Product = require("../../models/Product");
@@ -15,134 +15,140 @@ const createOrder = async (req, res) => {
       totalAmount,
       orderDate,
       orderUpdateDate,
-      paymentId,
-      payerId,
       cartId,
     } = req.body;
 
-    const create_payment_json = {
-      intent: "sale",
-      payer: {
-        payment_method: "paypal",
-      },
-      redirect_urls: {
-        return_url: "http://localhost:5173/shop/paypal-return",
-        cancel_url: "http://localhost:5173/shop/paypal-cancel",
-      },
-      transactions: [
-        {
-          item_list: {
-            items: cartItems.map((item) => ({
-              name: item.title,
-              sku: item.productId,
-              price: item.price.toFixed(2),
-              currency: "USD",
-              quantity: item.quantity,
-            })),
-          },
-          amount: {
-            currency: "USD",
-            total: totalAmount.toFixed(2),
-          },
-          description: "description",
-        },
-      ],
-    };
-
-    paypal.payment.create(create_payment_json, async (error, paymentInfo) => {
-      if (error) {
-        console.log(error);
-
-        return res.status(500).json({
-          success: false,
-          message: "Error while creating paypal payment",
-        });
-      } else {
-        const newlyCreatedOrder = new Order({
-          userId,
-          cartId,
-          cartItems,
-          addressInfo,
-          orderStatus,
-          paymentMethod,
-          paymentStatus,
-          totalAmount,
-          orderDate,
-          orderUpdateDate,
-          paymentId,
-          payerId,
-        });
-
-        await newlyCreatedOrder.save();
-
-        const approvalURL = paymentInfo.links.find(
-          (link) => link.rel === "approval_url"
-        ).href;
-
-        res.status(201).json({
-          success: true,
-          approvalURL,
-          orderId: newlyCreatedOrder._id,
-        });
-      }
+    console.log('Creating order with data:', { 
+      userId, cartItems, totalAmount, paymentMethod 
     });
+
+    const newOrder = new Order({
+      userId,
+      cartId,
+      cartItems,
+      addressInfo,
+      orderStatus,
+      paymentMethod,
+      paymentStatus,
+      totalAmount,
+      orderDate,
+      orderUpdateDate,
+    });
+
+    await newOrder.save();
+    console.log('Order saved with ID:', newOrder._id);
+
+    // Initiate Khalti payment
+    try {
+      const paymentData = await khaltiService.initiatePayment(
+        totalAmount,
+        newOrder._id.toString(),
+        cartItems,
+        req.user // Pass user info from auth middleware
+      );
+
+      console.log('Generated Khalti payment URL:', paymentData.payment_url);
+
+      res.status(201).json({
+        success: true,
+        orderId: newOrder._id,
+        payment_url: paymentData.payment_url,
+        pidx: paymentData.pidx
+      });
+    } catch (error) {
+      // If Khalti config fails, delete the order and notify client
+      await Order.findByIdAndDelete(newOrder._id);
+      throw new Error(`Failed to initialize payment: ${error.message}`);
+    }
   } catch (e) {
-    console.log(e);
+    console.error('Order creation error:', e);
     res.status(500).json({
       success: false,
-      message: "Some error occured!",
+      message: e.message || "Error occurred while creating order",
+      error: process.env.NODE_ENV === 'development' ? e.stack : undefined
     });
   }
 };
 
 const capturePayment = async (req, res) => {
+  let order = null;
   try {
-    const { paymentId, payerId, orderId } = req.body;
+    const { pidx, orderId } = req.body;
+    console.log('Verifying payment:', { pidx, orderId });
 
-    let order = await Order.findById(orderId);
-
-    if (!order) {
-      return res.status(404).json({
-        success: false,
-        message: "Order can not be found",
-      });
+    // Validate input
+    if (!pidx || !orderId) {
+      throw new Error('Missing required payment parameters');
     }
 
-    order.paymentStatus = "paid";
-    order.orderStatus = "confirmed";
-    order.paymentId = paymentId;
-    order.payerId = payerId;
+    order = await Order.findById(orderId);
+    if (!order) {
+      console.log('Order not found:', orderId);
+      throw new Error('Order not found');
+    }
 
-    for (let item of order.cartItems) {
-      let product = await Product.findById(item.productId);
+    try {
+      // Verify payment with Khalti
+      console.log('Looking up payment status with Khalti...', { pidx });
+      const verificationData = await khaltiService.verifyPayment(pidx);
 
-      if (!product) {
-        return res.status(404).json({
-          success: false,
-          message: `Not enough stock for this product ${product.title}`,
-        });
+      console.log('Payment verification successful:', verificationData);
+
+      // Update order with payment details
+      order.paymentStatus = "paid";
+      order.orderStatus = "confirmed";
+      order.paymentId = verificationData.idx || verificationData.pidx || token;
+      order.paymentDetails = verificationData;
+
+      // Update product stock
+      console.log('Updating product stock...');
+      for (let item of order.cartItems) {
+        let product = await Product.findById(item.productId);
+        if (!product) {
+          throw new Error(`Product not found: ${item.title}`);
+        }
+
+        if (product.totalStock < item.quantity) {
+          throw new Error(`Insufficient stock for product: ${item.title}`);
+        }
+
+        product.totalStock -= item.quantity;
+        await product.save();
+        console.log(`Updated stock for product ${item.title}: ${product.totalStock}`);
       }
 
-      product.totalStock -= item.quantity;
+      // Remove cart after successful payment
+      if (order.cartId) {
+        console.log('Removing cart:', order.cartId);
+        await Cart.findByIdAndDelete(order.cartId);
+      }
 
-      await product.save();
+      await order.save();
+      console.log('Order updated successfully');
+
+      res.status(200).json({
+        success: true,
+        message: "Payment verified and order confirmed",
+        data: order,
+      });
+    } catch (error) {
+      console.error('Payment verification failed:', error);
+      
+      if (order) {
+        // Revert order status
+        order.paymentStatus = "failed";
+        order.orderStatus = "cancelled";
+        await order.save();
+      }
+
+      throw error;
     }
-
-    const getCartId = order.cartId;
-    await Cart.findByIdAndDelete(getCartId);
-
-    await order.save();
-
-    res.status(200).json({
-      success: true,
-      message: "Order confirmed",
-      data: order,
-    });
   } catch (e) {
-    console.log(e);
+    console.error('Payment capture error:', e);
     res.status(500).json({
       success: false,
-      message: "Some error occured!",
+      message: e.message || "Error occurred while capturing payment",
+      error: process.env.NODE_ENV === 'development' ? e.stack : undefined
     });
   }
 };
@@ -150,6 +156,7 @@ const capturePayment = async (req, res) => {
 const getAllOrdersByUser = async (req, res) => {
   try {
     const { userId } = req.params;
+    console.log('Fetching orders for user:', userId);
 
     const orders = await Order.find({ userId });
 
@@ -165,10 +172,11 @@ const getAllOrdersByUser = async (req, res) => {
       data: orders,
     });
   } catch (e) {
-    console.log(e);
+    console.error('Error fetching user orders:', e);
     res.status(500).json({
       success: false,
-      message: "Some error occured!",
+      message: e.message || "Error occurred while fetching orders",
+      error: process.env.NODE_ENV === 'development' ? e.stack : undefined
     });
   }
 };
@@ -176,6 +184,7 @@ const getAllOrdersByUser = async (req, res) => {
 const getOrderDetails = async (req, res) => {
   try {
     const { id } = req.params;
+    console.log('Fetching order details:', id);
 
     const order = await Order.findById(id);
 
@@ -191,10 +200,11 @@ const getOrderDetails = async (req, res) => {
       data: order,
     });
   } catch (e) {
-    console.log(e);
+    console.error('Error fetching order details:', e);
     res.status(500).json({
       success: false,
-      message: "Some error occured!",
+      message: e.message || "Error occurred while fetching order details",
+      error: process.env.NODE_ENV === 'development' ? e.stack : undefined
     });
   }
 };

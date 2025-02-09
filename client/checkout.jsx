@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { useState, useEffect } from "react";
 import { createNewOrder, capturePayment } from "@/store/shop/order-slice";
 import { useToast } from "@/components/ui/use-toast";
-import { useNavigate, useLocation } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 
 function ShoppingCheckout() {
   const { cartItems } = useSelector((state) => state.shopCart);
@@ -14,45 +14,46 @@ function ShoppingCheckout() {
   const { isLoading: orderLoading } = useSelector((state) => state.shopOrder);
   const [currentSelectedAddress, setCurrentSelectedAddress] = useState(null);
   const [isPaymentStart, setIsPaymentStart] = useState(false);
+  const [isKhaltiLoaded, setIsKhaltiLoaded] = useState(false);
   const dispatch = useDispatch();
   const { toast } = useToast();
   const navigate = useNavigate();
-  const location = useLocation();
 
   useEffect(() => {
-    // Check for payment verification after returning from Khalti
-    const queryParams = new URLSearchParams(location.search);
-    const pidx = queryParams.get('pidx');
-    const orderId = sessionStorage.getItem('currentOrderId');
-
-    if (pidx && orderId) {
-      verifyPayment(pidx, JSON.parse(orderId));
-    }
-  }, [location.search]);
-
-  async function verifyPayment(pidx, orderId) {
-    try {
-      const verificationResponse = await dispatch(capturePayment({
-        pidx,
-        orderId
-      })).unwrap();
-      
-      if (verificationResponse?.success) {
-        sessionStorage.removeItem('currentOrderId');
-        navigate('/shop/payment-success');
+    // Load Khalti SDK
+    const script = document.createElement("script");
+    script.src = "https://unpkg.com/khalti-checkout-web@2.2.0/dist/khalti-checkout.iffe.js";
+    script.async = true;
+    script.onload = () => {
+      console.log('Khalti SDK loaded successfully');
+      // Verify if KhaltiCheckout is available
+      if (window.KhaltiCheckout) {
+        setIsKhaltiLoaded(true);
       } else {
-        throw new Error('Payment verification failed');
+        console.error('KhaltiCheckout not found in window object');
+        toast({
+          title: "Failed to initialize payment system",
+          description: "Please refresh the page or try again later",
+          variant: "destructive",
+        });
       }
-    } catch (error) {
-      console.error('Payment verification failed:', error);
+    };
+    script.onerror = (error) => {
+      console.error('Error loading Khalti SDK:', error);
       toast({
-        title: "Payment verification failed",
-        description: error.message || "Please try again",
+        title: "Failed to load payment system",
+        description: "Please refresh the page and try again",
         variant: "destructive",
       });
-      navigate('/shop/checkout');
-    }
-  }
+    };
+    document.body.appendChild(script);
+
+    return () => {
+      if (document.body.contains(script)) {
+        document.body.removeChild(script);
+      }
+    };
+  }, [toast]);
 
   const totalCartAmount =
     cartItems && cartItems.items && cartItems.items.length > 0
@@ -69,6 +70,15 @@ function ShoppingCheckout() {
 
   async function handleInitiateKhaltiPayment() {
     try {
+      if (!isKhaltiLoaded) {
+        toast({
+          title: "Payment system is not ready",
+          description: "Please wait a moment and try again",
+          variant: "destructive",
+        });
+        return;
+      }
+
       console.log('Starting payment process...');
       console.log('Cart items:', cartItems);
       
@@ -129,11 +139,64 @@ function ShoppingCheckout() {
         console.log('Order creation response:', orderResponse);
         
         if (orderResponse?.success) {
-            // Store orderId for verification when user returns
-            sessionStorage.setItem('currentOrderId', JSON.stringify(orderResponse.orderId));
-            
-            // Redirect to Khalti payment page
-            window.location.href = orderResponse.payment_url;
+            const config = {
+              publicKey: process.env.5001,
+              productIdentity: orderResponse.orderId,
+              productName: "Ecommerce Order",
+              amount: Math.round(totalCartAmount * 100),
+              productUrl: window.location.origin,
+              returnUrl: `${window.location.origin}/shop/payment-success`,
+              websiteUrl: window.location.origin,
+              merchantName: "MERN Ecommerce",
+            "eventHandler": {
+              async onSuccess(payload) {
+                try {
+                  console.log('Payment Success:', payload);
+                  
+                  const verificationResponse = await dispatch(capturePayment({
+                    token: payload.token,
+                    amount: payload.amount,
+                    orderId: orderResponse.orderId
+                  })).unwrap();
+                  
+                  if (verificationResponse?.success) {
+                    navigate('/shop/payment-success');
+                  } else {
+                    throw new Error('Payment verification failed');
+                  }
+                } catch (error) {
+                  console.error('Verification Error:', error);
+                  toast({
+                    title: "Payment verification failed",
+                    description: error.message,
+                    variant: "destructive",
+                  });
+                  setIsPaymentStart(false);
+                }
+              },
+              onError(error) {
+                console.error('Khalti Error:', error);
+                toast({
+                  title: "Payment failed",
+                  description: error.message,
+                  variant: "destructive",
+                });
+                setIsPaymentStart(false);
+              },
+              onClose() {
+                console.log('Khalti widget closed');
+                setIsPaymentStart(false);
+              }
+            }
+          };
+
+          console.log('Initializing Khalti checkout with config:', {
+            ...config,
+            publicKey: config.publicKey.substring(0, 10) + '...'
+          });
+
+          const checkout = new window.KhaltiCheckout(config);
+          checkout.show();
         } else {
           throw new Error('Failed to create order');
         }
@@ -183,10 +246,12 @@ function ShoppingCheckout() {
             <Button 
               onClick={handleInitiateKhaltiPayment} 
               className="w-full"
-              disabled={isPaymentStart || orderLoading}
+              disabled={!isKhaltiLoaded || isPaymentStart || orderLoading}
             >
               {isPaymentStart || orderLoading
                 ? "Processing Khalti Payment..."
+                : !isKhaltiLoaded
+                ? "Loading Payment System..."
                 : "Pay with Khalti"}
             </Button>
           </div>

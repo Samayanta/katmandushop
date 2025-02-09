@@ -2,18 +2,18 @@ import { createAsyncThunk, createSlice } from "@reduxjs/toolkit";
 import axios from "axios";
 
 const initialState = {
-  approvalURL: null,
   isLoading: false,
   orderId: null,
   orderList: [],
   orderDetails: null,
+  khaltiConfig: null,
 };
 
 export const createNewOrder = createAsyncThunk(
   "/order/createNewOrder",
   async (orderData) => {
     const response = await axios.post(
-      "http://localhost:5000/api/shop/order/create",
+      "http://localhost:5001/api/shop/order/create",
       orderData
     );
 
@@ -23,12 +23,11 @@ export const createNewOrder = createAsyncThunk(
 
 export const capturePayment = createAsyncThunk(
   "/order/capturePayment",
-  async ({ paymentId, payerId, orderId }) => {
+  async ({ pidx, orderId }) => {
     const response = await axios.post(
-      "http://localhost:5000/api/shop/order/capture",
+      "http://localhost:5001/api/shop/order/capture",
       {
-        paymentId,
-        payerId,
+        pidx,
         orderId,
       }
     );
@@ -41,7 +40,7 @@ export const getAllOrdersByUserId = createAsyncThunk(
   "/order/getAllOrdersByUserId",
   async (userId) => {
     const response = await axios.get(
-      `http://localhost:5000/api/shop/order/list/${userId}`
+      `http://localhost:5001/api/shop/order/list/${userId}`
     );
 
     return response.data;
@@ -52,7 +51,7 @@ export const getOrderDetails = createAsyncThunk(
   "/order/getOrderDetails",
   async (id) => {
     const response = await axios.get(
-      `http://localhost:5000/api/shop/order/details/${id}`
+      `http://localhost:5001/api/shop/order/details/${id}`
     );
 
     return response.data;
@@ -74,8 +73,8 @@ const shoppingOrderSlice = createSlice({
       })
       .addCase(createNewOrder.fulfilled, (state, action) => {
         state.isLoading = false;
-        state.approvalURL = action.payload.approvalURL;
         state.orderId = action.payload.orderId;
+        state.khaltiConfig = action.payload.khaltiConfig;
         sessionStorage.setItem(
           "currentOrderId",
           JSON.stringify(action.payload.orderId)
@@ -83,8 +82,8 @@ const shoppingOrderSlice = createSlice({
       })
       .addCase(createNewOrder.rejected, (state) => {
         state.isLoading = false;
-        state.approvalURL = null;
         state.orderId = null;
+        state.khaltiConfig = null;
       })
       .addCase(getAllOrdersByUserId.pending, (state) => {
         state.isLoading = true;
@@ -107,6 +106,20 @@ const shoppingOrderSlice = createSlice({
       .addCase(getOrderDetails.rejected, (state) => {
         state.isLoading = false;
         state.orderDetails = null;
+      })
+      .addCase(capturePayment.pending, (state) => {
+        state.isLoading = true;
+      })
+      .addCase(capturePayment.fulfilled, (state, action) => {
+        state.isLoading = false;
+        state.orderDetails = action.payload.data;
+        // Clear orderId and khaltiConfig after successful payment
+        state.orderId = null;
+        state.khaltiConfig = null;
+        sessionStorage.removeItem("currentOrderId");
+      })
+      .addCase(capturePayment.rejected, (state) => {
+        state.isLoading = false;
       });
   },
 });
