@@ -14,7 +14,7 @@ class KhaltiService {
     }
 
     this.axios = axios.create({
-      baseURL: "https://dev.khalti.com/api/v2/",
+      baseURL: "https://khalti.com/api/v2/",
       headers: {
         'Authorization': `Key ${this.secretKey}`,
         'Content-Type': 'application/json',
