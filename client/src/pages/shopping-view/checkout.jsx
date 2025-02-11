@@ -19,41 +19,6 @@ function ShoppingCheckout() {
   const navigate = useNavigate();
   const location = useLocation();
 
-  useEffect(() => {
-    // Check for payment verification after returning from Khalti
-    const queryParams = new URLSearchParams(location.search);
-    const pidx = queryParams.get('pidx');
-    const orderId = sessionStorage.getItem('currentOrderId');
-
-    if (pidx && orderId) {
-      verifyPayment(pidx, JSON.parse(orderId));
-    }
-  }, [location.search]);
-
-  async function verifyPayment(pidx, orderId) {
-    try {
-      const verificationResponse = await dispatch(capturePayment({
-        pidx,
-        orderId
-      })).unwrap();
-      
-      if (verificationResponse?.success) {
-        sessionStorage.removeItem('currentOrderId');
-        navigate('/shop/payment-success');
-      } else {
-        throw new Error('Payment verification failed');
-      }
-    } catch (error) {
-      console.error('Payment verification failed:', error);
-      toast({
-        title: "Payment verification failed",
-        description: error.message || "Please try again",
-        variant: "destructive",
-      });
-      navigate('/shop/checkout');
-    }
-  }
-
   const totalCartAmount =
     cartItems && cartItems.items && cartItems.items.length > 0
       ? cartItems.items.reduce(
@@ -89,6 +54,8 @@ function ShoppingCheckout() {
 
       const orderData = {
         userId: user?.id,
+        name: user?.name,
+        email: user?.email,
         cartId: cartItems?._id,
         cartItems: cartItems.items.map((singleCartItem) => ({
           productId: singleCartItem?.productId,
@@ -107,6 +74,8 @@ function ShoppingCheckout() {
           pincode: currentSelectedAddress?.pincode,
           phone: currentSelectedAddress?.phone,
           notes: currentSelectedAddress?.notes,
+          name: user?.name,
+          email: user?.email
         },
         orderStatus: "pending",
         paymentMethod: "khalti",
@@ -129,9 +98,6 @@ function ShoppingCheckout() {
         console.log('Order creation response:', orderResponse);
         
         if (orderResponse?.success) {
-            // Store orderId for verification when user returns
-            sessionStorage.setItem('currentOrderId', JSON.stringify(orderResponse.orderId));
-            
             // Redirect to Khalti payment page
             window.location.href = orderResponse.payment_url;
         } else {

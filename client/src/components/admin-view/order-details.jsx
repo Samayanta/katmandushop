@@ -64,7 +64,19 @@ function AdminOrderDetailsView({ orderDetails }) {
           </div>
           <div className="flex mt-2 items-center justify-between">
             <p className="font-medium">Payment Status</p>
-            <Label>{orderDetails?.paymentStatus}</Label>
+            <Label>
+              <Badge
+                className={`py-1 px-3 ${
+                  orderDetails?.paymentStatus === "paid"
+                    ? "bg-green-500"
+                    : orderDetails?.paymentStatus === "failed"
+                    ? "bg-red-600"
+                    : "bg-yellow-500"
+                }`}
+              >
+                {orderDetails?.paymentStatus}
+              </Badge>
+            </Label>
           </div>
           <div className="flex mt-2 items-center justify-between">
             <p className="font-medium">Order Status</p>
@@ -93,6 +105,7 @@ function AdminOrderDetailsView({ orderDetails }) {
                     <li className="flex items-center justify-between">
                       <span>Title: {item.title}</span>
                       <span>Quantity: {item.quantity}</span>
+                      <span>Color: {item.selectedColor}</span>
                       <span>Price: ${item.price}</span>
                     </li>
                   ))
@@ -104,7 +117,10 @@ function AdminOrderDetailsView({ orderDetails }) {
           <div className="grid gap-2">
             <div className="font-medium">Shipping Info</div>
             <div className="grid gap-0.5 text-muted-foreground">
-              <span>{user.userName}</span>
+              <div className="font-medium mb-1">Customer Details</div>
+              <span>Name: {orderDetails?.user?.name}</span>
+              <span>Email: {orderDetails?.user?.email}</span>
+              <div className="font-medium mt-3 mb-1">Address</div>
               <span>{orderDetails?.addressInfo?.address}</span>
               <span>{orderDetails?.addressInfo?.city}</span>
               <span>{orderDetails?.addressInfo?.pincode}</span>

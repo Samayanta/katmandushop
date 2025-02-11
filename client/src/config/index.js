@@ -58,11 +58,11 @@ export const addProductFormElements = [
     name: "category",
     componentType: "select",
     options: [
-      { id: "men", label: "Men" },
-      { id: "women", label: "Women" },
-      { id: "kids", label: "Kids" },
+      { id: "mens", label: "Mens" },
+      { id: "womens", label: "Womens" },
       { id: "accessories", label: "Accessories" },
       { id: "footwear", label: "Footwear" },
+      { id: "pashmina", label: "Pashmina" },
     ],
   },
   {
@@ -70,12 +70,9 @@ export const addProductFormElements = [
     name: "brand",
     componentType: "select",
     options: [
-      { id: "nike", label: "Nike" },
-      { id: "adidas", label: "Adidas" },
-      { id: "puma", label: "Puma" },
-      { id: "levi", label: "Levi's" },
-      { id: "zara", label: "Zara" },
-      { id: "h&m", label: "H&M" },
+      { id: "none", label: "None" },
+      { id: "katmandu", label: "Katmandu" },
+      { id: "annapurna", label: "Annapurna" },
     ],
   },
   {
@@ -99,6 +96,12 @@ export const addProductFormElements = [
     type: "number",
     placeholder: "Enter total stock",
   },
+  {
+    label: "Colors",
+    name: "colors",
+    componentType: "textarea",
+    placeholder: "Enter color options (comma separated)",
+  },
 ];
 
 export const shoppingViewHeaderMenuItems = [
@@ -113,18 +116,18 @@ export const shoppingViewHeaderMenuItems = [
     path: "/shop/listing",
   },
   {
-    id: "men",
-    label: "Men",
+    id: "mens",
+    label: "Mens",
     path: "/shop/listing",
   },
   {
-    id: "women",
-    label: "Women",
+    id: "womens",
+    label: "Womens",
     path: "/shop/listing",
   },
   {
-    id: "kids",
-    label: "Kids",
+    id: "accessories",
+    label: "Accessories",
     path: "/shop/listing",
   },
   {
@@ -133,8 +136,8 @@ export const shoppingViewHeaderMenuItems = [
     path: "/shop/listing",
   },
   {
-    id: "accessories",
-    label: "Accessories",
+    id: "pashmina",
+    label: "Pashmina",
     path: "/shop/listing",
   },
   {
@@ -145,37 +148,31 @@ export const shoppingViewHeaderMenuItems = [
 ];
 
 export const categoryOptionsMap = {
-  men: "Men",
-  women: "Women",
-  kids: "Kids",
+  mens: "Mens",
+  womens: "Womens",
   accessories: "Accessories",
   footwear: "Footwear",
+  pashmina: "Pashmina",
 };
 
 export const brandOptionsMap = {
-  nike: "Nike",
-  adidas: "Adidas",
-  puma: "Puma",
-  levi: "Levi",
-  zara: "Zara",
-  "h&m": "H&M",
+  none: "None",
+  katmandu: "Katmandu",
+  annapurna: "Annapurna",
 };
 
 export const filterOptions = {
   category: [
-    { id: "men", label: "Men" },
-    { id: "women", label: "Women" },
-    { id: "kids", label: "Kids" },
+    { id: "mens", label: "Mens" },
+    { id: "womens", label: "Womens" },
     { id: "accessories", label: "Accessories" },
     { id: "footwear", label: "Footwear" },
+    { id: "pashmina", label: "Pashmina" },
   ],
   brand: [
-    { id: "nike", label: "Nike" },
-    { id: "adidas", label: "Adidas" },
-    { id: "puma", label: "Puma" },
-    { id: "levi", label: "Levi's" },
-    { id: "zara", label: "Zara" },
-    { id: "h&m", label: "H&M" },
+    { id: "none", label: "None" },
+    { id: "katmandu", label: "Katmandu" },
+    { id: "annapurna", label: "Annapurna" },
   ],
 };
 

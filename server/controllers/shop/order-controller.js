@@ -2,6 +2,7 @@ const khaltiService = require("../../helpers/khalti");
 const Order = require("../../models/Order");
 const Cart = require("../../models/Cart");
 const Product = require("../../models/Product");
+const mongoose = require("mongoose");
 
 const createOrder = async (req, res) => {
   try {
@@ -22,8 +23,11 @@ const createOrder = async (req, res) => {
       userId, cartItems, totalAmount, paymentMethod 
     });
 
+    // Convert userId to ObjectId
+    const userObjectId = new mongoose.Types.ObjectId(userId);
+
     const newOrder = new Order({
-      userId,
+      userId: userObjectId,
       cartId,
       cartItems,
       addressInfo,
@@ -44,7 +48,12 @@ const createOrder = async (req, res) => {
         totalAmount,
         newOrder._id.toString(),
         cartItems,
-        req.user // Pass user info from auth middleware
+        { 
+          id: userId,
+          name: req.body.name || 'Customer',
+          email: req.body.email,
+          phone: addressInfo.phone || ''
+        }
       );
 
       console.log('Generated Khalti payment URL:', paymentData.payment_url);
@@ -91,13 +100,13 @@ const capturePayment = async (req, res) => {
       // Verify payment with Khalti
       console.log('Looking up payment status with Khalti...', { pidx });
       const verificationData = await khaltiService.verifyPayment(pidx);
-
+      
       console.log('Payment verification successful:', verificationData);
 
       // Update order with payment details
-      order.paymentStatus = "paid";
-      order.orderStatus = "confirmed";
-      order.paymentId = verificationData.idx || verificationData.pidx || token;
+      order.paymentStatus = verificationData.status === "Completed" ? "paid" : "pending";
+      order.orderStatus = verificationData.status === "Completed" ? "confirmed" : "pending";
+      order.paymentId = verificationData.pidx;
       order.paymentDetails = verificationData;
 
       // Update product stock
@@ -117,11 +126,9 @@ const capturePayment = async (req, res) => {
         console.log(`Updated stock for product ${item.title}: ${product.totalStock}`);
       }
 
-      // Remove cart after successful payment
-      if (order.cartId) {
-        console.log('Removing cart:', order.cartId);
-        await Cart.findByIdAndDelete(order.cartId);
-      }
+      // Remove cart after successful payment by userId
+      console.log('Removing cart for user:', order.userId);
+      await Cart.deleteOne({ userId: order.userId });
 
       await order.save();
       console.log('Order updated successfully');
@@ -141,7 +148,10 @@ const capturePayment = async (req, res) => {
         await order.save();
       }
 
-      throw error;
+      // Add payment status to the error for better frontend handling
+      const errorWithStatus = new Error(error.message);
+      errorWithStatus.paymentStatus = error.message.includes('Payment status is') ? 'pending' : 'failed';
+      throw errorWithStatus;
     }
   } catch (e) {
     console.error('Payment capture error:', e);
@@ -158,7 +168,7 @@ const getAllOrdersByUser = async (req, res) => {
     const { userId } = req.params;
     console.log('Fetching orders for user:', userId);
 
-    const orders = await Order.find({ userId });
+    const orders = await Order.find({ userId }).sort({ orderDate: -1 });
 
     if (!orders.length) {
       return res.status(404).json({

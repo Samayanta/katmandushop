@@ -8,13 +8,14 @@ const initialState = {
 
 export const addToCart = createAsyncThunk(
   "cart/addToCart",
-  async ({ userId, productId, quantity }) => {
+  async ({ userId, productId, quantity, selectedColor }) => {
     const response = await axios.post(
-      "http://localhost:5001/api/shop/cart/add",
+      " http://localhost:5001/api/shop/cart/add",
       {
         userId,
         productId,
         quantity,
+        selectedColor
       }
     );
 
@@ -26,9 +27,19 @@ export const fetchCartItems = createAsyncThunk(
   "cart/fetchCartItems",
   async (userId) => {
     const response = await axios.get(
-      `http://localhost:5001/api/shop/cart/get/${userId}`
+      ` http://localhost:5001/api/shop/cart/get/${userId}`
     );
 
+    return response.data;
+  }
+);
+
+export const clearUserCart = createAsyncThunk(
+  "cart/clearUserCart",
+  async (userId) => {
+    const response = await axios.delete(
+      ` http://localhost:5001/api/shop/cart/clear/${userId}`
+    );
     return response.data;
   }
 );
@@ -37,7 +48,7 @@ export const deleteCartItem = createAsyncThunk(
   "cart/deleteCartItem",
   async ({ userId, productId }) => {
     const response = await axios.delete(
-      `http://localhost:5001/api/shop/cart/${userId}/${productId}`
+      ` http://localhost:5001/api/shop/cart/${userId}/${productId}`
     );
 
     return response.data;
@@ -46,13 +57,14 @@ export const deleteCartItem = createAsyncThunk(
 
 export const updateCartQuantity = createAsyncThunk(
   "cart/updateCartQuantity",
-  async ({ userId, productId, quantity }) => {
+  async ({ userId, productId, quantity, selectedColor }) => {
     const response = await axios.put(
-      "http://localhost:5001/api/shop/cart/update-cart",
+      " http://localhost:5001/api/shop/cart/update-cart",
       {
         userId,
         productId,
         quantity,
+        selectedColor
       }
     );
 
@@ -63,7 +75,12 @@ export const updateCartQuantity = createAsyncThunk(
 const shoppingCartSlice = createSlice({
   name: "shoppingCart",
   initialState,
-  reducers: {},
+  reducers: {
+    resetCart: (state) => {
+      state.cartItems = [];
+      state.isLoading = false;
+    }
+  },
   extraReducers: (builder) => {
     builder
       .addCase(addToCart.pending, (state) => {
@@ -109,8 +126,13 @@ const shoppingCartSlice = createSlice({
       .addCase(deleteCartItem.rejected, (state) => {
         state.isLoading = false;
         state.cartItems = [];
+      })
+      .addCase(clearUserCart.fulfilled, (state) => {
+        state.isLoading = false;
+        state.cartItems = [];
       });
   },
 });
 
+export const { resetCart } = shoppingCartSlice.actions;
 export default shoppingCartSlice.reducer;

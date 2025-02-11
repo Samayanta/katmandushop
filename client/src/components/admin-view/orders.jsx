@@ -29,10 +29,17 @@ function AdminOrdersView() {
   }
 
   useEffect(() => {
+    // Initial fetch
     dispatch(getAllOrdersForAdmin());
-  }, [dispatch]);
 
-  console.log(orderDetails, "orderList");
+    // Poll for updates every 30 seconds
+    const interval = setInterval(() => {
+      dispatch(getAllOrdersForAdmin());
+    }, 30000);
+
+    // Cleanup interval on unmount
+    return () => clearInterval(interval);
+  }, [dispatch]);
 
   useEffect(() => {
     if (orderDetails !== null) setOpenDetailsDialog(true);
@@ -48,9 +55,11 @@ function AdminOrdersView() {
           <TableHeader>
             <TableRow>
               <TableHead>Order ID</TableHead>
-              <TableHead>Order Date</TableHead>
-              <TableHead>Order Status</TableHead>
-              <TableHead>Order Price</TableHead>
+              <TableHead>Customer Name</TableHead>
+              <TableHead>Date</TableHead>
+              <TableHead>Status</TableHead>
+              <TableHead>Payment</TableHead>
+              <TableHead>Amount</TableHead>
               <TableHead>
                 <span className="sr-only">Details</span>
               </TableHead>
@@ -59,13 +68,14 @@ function AdminOrdersView() {
           <TableBody>
             {orderList && orderList.length > 0
               ? orderList.map((orderItem) => (
-                  <TableRow>
-                    <TableCell>{orderItem?._id}</TableCell>
-                    <TableCell>{orderItem?.orderDate.split("T")[0]}</TableCell>
+                  <TableRow key={orderItem._id}>
+                    <TableCell className="font-medium">{orderItem?._id}</TableCell>
+                    <TableCell>{orderItem?.user?.name || "N/A"}</TableCell>
+                    <TableCell>{new Date(orderItem?.orderDate).toLocaleDateString()}</TableCell>
                     <TableCell>
                       <Badge
                         className={`py-1 px-3 ${
-                          orderItem?.orderStatus === "confirmed"
+                          orderItem?.orderStatus === "completed"
                             ? "bg-green-500"
                             : orderItem?.orderStatus === "rejected"
                             ? "bg-red-600"
@@ -73,6 +83,19 @@ function AdminOrdersView() {
                         }`}
                       >
                         {orderItem?.orderStatus}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      <Badge
+                        className={`py-1 px-3 ${
+                          orderItem?.paymentStatus === "paid"
+                            ? "bg-green-500"
+                            : orderItem?.paymentStatus === "failed"
+                            ? "bg-red-600"
+                            : "bg-yellow-500"
+                        }`}
+                      >
+                        {orderItem?.paymentStatus}
                       </Badge>
                     </TableCell>
                     <TableCell>${orderItem?.totalAmount}</TableCell>

@@ -1,5 +1,6 @@
 import { Button } from "../ui/button";
 import { Card, CardContent, CardFooter } from "../ui/card";
+import { Badge } from "../ui/badge";
 
 function AdminProductTile({
   product,
@@ -32,13 +33,27 @@ function AdminProductTile({
               <span className="text-lg font-bold">${product?.salePrice}</span>
             ) : null}
           </div>
+          {product?.colors && product.colors.length > 0 && (
+            <div className="flex flex-wrap gap-1 mt-2">
+              <span className="text-sm text-gray-600">Colors:</span>
+              {product.colors.map((color) => (
+                <Badge key={color} variant="secondary" className="text-xs">
+                  {color}
+                </Badge>
+              ))}
+            </div>
+          )}
         </CardContent>
         <CardFooter className="flex justify-between items-center">
           <Button
             onClick={() => {
               setOpenCreateProductsDialog(true);
               setCurrentEditedId(product?._id);
-              setFormData(product);
+              // Convert colors array to comma-separated string for editing
+              setFormData({
+                ...product,
+                colors: product.colors ? product.colors.join(', ') : ''
+              });
             }}
           >
             Edit

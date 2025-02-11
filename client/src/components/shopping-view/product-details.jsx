@@ -4,6 +4,7 @@ import { Button } from "../ui/button";
 import { Dialog, DialogContent } from "../ui/dialog";
 import { Separator } from "../ui/separator";
 import { Input } from "../ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select";
 import { useDispatch, useSelector } from "react-redux";
 import { addToCart, fetchCartItems } from "@/store/shop/cart-slice";
 import { useToast } from "../ui/use-toast";
@@ -16,6 +17,7 @@ import { addReview, getReviews } from "@/store/shop/review-slice";
 function ProductDetailsDialog({ open, setOpen, productDetails }) {
   const [reviewMsg, setReviewMsg] = useState("");
   const [rating, setRating] = useState(0);
+  const [selectedColor, setSelectedColor] = useState("");
   const dispatch = useDispatch();
   const { user } = useSelector((state) => state.auth);
   const { cartItems } = useSelector((state) => state.shopCart);
@@ -25,12 +27,31 @@ function ProductDetailsDialog({ open, setOpen, productDetails }) {
 
   function handleRatingChange(getRating) {
     console.log(getRating, "getRating");
-
     setRating(getRating);
   }
 
   function handleAddToCart(getCurrentProductId, getTotalStock) {
     let getCartItems = cartItems.items || [];
+
+    // Debug logging
+    console.log("Adding to cart:", {
+      hasColors: productDetails?.colors?.length > 0,
+      colors: productDetails?.colors,
+      selectedColor,
+      getCurrentProductId,
+      getTotalStock
+    });
+
+    // Only require color selection if product has colors
+    const needsColor = productDetails?.colors?.length > 0;
+    
+    if (needsColor && !selectedColor) {
+      toast({
+        title: "Please select a color",
+        variant: "destructive",
+      });
+      return;
+    }
 
     if (getCartItems.length) {
       const indexOfCurrentItem = getCartItems.findIndex(
@@ -43,16 +64,27 @@ function ProductDetailsDialog({ open, setOpen, productDetails }) {
             title: `Only ${getQuantity} quantity can be added for this item`,
             variant: "destructive",
           });
-
           return;
         }
       }
     }
+
+    // If product has no colors, pass a default value
+    const color = needsColor ? selectedColor : "default";
+
+    console.log("Dispatching addToCart with:", {
+      userId: user?.id,
+      productId: getCurrentProductId,
+      quantity: 1,
+      selectedColor: color
+    });
+
     dispatch(
       addToCart({
         userId: user?.id,
         productId: getCurrentProductId,
         quantity: 1,
+        selectedColor: color
       })
     ).then((data) => {
       if (data?.payload?.success) {
@@ -60,7 +92,19 @@ function ProductDetailsDialog({ open, setOpen, productDetails }) {
         toast({
           title: "Product is added to cart",
         });
+      } else {
+        console.error("Failed to add to cart:", data);
+        toast({
+          title: "Failed to add product to cart",
+          variant: "destructive",
+        });
       }
+    }).catch(error => {
+      console.error("Error adding to cart:", error);
+      toast({
+        title: "Error adding product to cart",
+        variant: "destructive",
+      });
     });
   }
 
@@ -69,6 +113,7 @@ function ProductDetailsDialog({ open, setOpen, productDetails }) {
     dispatch(setProductDetails());
     setRating(0);
     setReviewMsg("");
+    setSelectedColor("");
   }
 
   function handleAddReview() {
@@ -96,7 +141,9 @@ function ProductDetailsDialog({ open, setOpen, productDetails }) {
     if (productDetails !== null) dispatch(getReviews(productDetails?._id));
   }, [productDetails]);
 
-  console.log(reviews, "reviews");
+  useEffect(() => {
+    console.log("Product details colors:", productDetails?.colors);
+  }, [productDetails]);
 
   const averageReview =
     reviews && reviews.length > 0
@@ -145,7 +192,24 @@ function ProductDetailsDialog({ open, setOpen, productDetails }) {
               ({averageReview.toFixed(2)})
             </span>
           </div>
-          <div className="mt-5 mb-5">
+          <div className="mt-5 mb-5 space-y-4">
+            {productDetails?.colors && productDetails.colors.length > 0 && (
+              <div>
+                <Label>Select Color</Label>
+                <Select onValueChange={setSelectedColor} value={selectedColor}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Choose a color" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {productDetails.colors.map((color) => (
+                      <SelectItem key={color} value={color}>
+                        {color}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
             {productDetails?.totalStock === 0 ? (
               <Button className="w-full opacity-60 cursor-not-allowed">
                 Out of Stock
@@ -170,7 +234,7 @@ function ProductDetailsDialog({ open, setOpen, productDetails }) {
             <div className="grid gap-6">
               {reviews && reviews.length > 0 ? (
                 reviews.map((reviewItem) => (
-                  <div className="flex gap-4">
+                  <div className="flex gap-4" key={reviewItem._id}>
                     <Avatar className="w-10 h-10 border">
                       <AvatarFallback>
                         {reviewItem?.userName[0].toUpperCase()}

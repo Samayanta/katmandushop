@@ -3,18 +3,15 @@ const axios = require("axios");
 class KhaltiService {
   constructor() {
     this.secretKey = process.env.KHALTI_SECRET_KEY;
-    this.clientUrl = process.env.CLIENT_URL;
+    this.clientUrl = process.env.CLIENT_URL; 
 
     // Validate required environment variables
     if (!this.secretKey) {
       throw new Error('KHALTI_SECRET_KEY environment variable is required');
     }
-    if (!this.clientUrl) {
-      throw new Error('CLIENT_URL environment variable is required');
-    }
 
     this.axios = axios.create({
-      baseURL: "https://khalti.com/api/v2/",
+      baseURL: "https://a.khalti.com/api/v2/",
       headers: {
         'Authorization': `Key ${this.secretKey}`,
         'Content-Type': 'application/json',
@@ -32,7 +29,14 @@ class KhaltiService {
       const response = await this.axios.post('epayment/lookup/', { pidx });
 
       console.log('Khalti verification response:', response.data);
-      return response.data;
+      const verificationData = response.data;
+      
+      // Check payment status from Khalti response
+      if (verificationData.status !== "Completed") {
+        throw new Error(`Payment status is ${verificationData.status}`);
+      }
+      
+      return verificationData;
     } catch (error) {
       console.error('Khalti verification error:', error.response?.data || error);
       throw new Error(
@@ -60,8 +64,8 @@ class KhaltiService {
       console.log('Amount in paisa:', amountInPaisa);
 
       const payload = {
-        return_url: `${this.clientUrl}/shop/payment-success`,
-        website_url: this.clientUrl,
+        return_url: `${this.clientUrl}shop/payment-success`,
+        website_url: this.clientUrl.replace(/\/$/, ''),
         amount: amountInPaisa.toString(),
         purchase_order_id: orderId,
         purchase_order_name: `Order #${orderId}`,

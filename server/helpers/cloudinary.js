@@ -2,9 +2,9 @@ const cloudinary = require("cloudinary").v2;
 const multer = require("multer");
 
 cloudinary.config({
-  cloud_name: "djm3vrupr",
-  api_key: "449793278643861",
-  api_secret: "ZLPMSy6jDqdr6skHWJEhPnSxzBE",
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET,
 });
 
 const storage = new multer.memoryStorage();
@@ -17,6 +17,11 @@ async function imageUploadUtil(file) {
   return result;
 }
 
+async function deleteImageUtil(publicId) {
+  const result = await cloudinary.uploader.destroy(publicId);
+  return result;
+}
+
 const upload = multer({ storage });
 
-module.exports = { upload, imageUploadUtil };
+module.exports = { upload, imageUploadUtil, deleteImageUtil };

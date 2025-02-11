@@ -140,7 +140,7 @@ function ShoppingCheckout() {
         
         if (orderResponse?.success) {
             const config = {
-              publicKey: process.env.5001,
+              publicKey: process.env.VITE_KHALTI_PUBLIC_KEY,
               productIdentity: orderResponse.orderId,
               productName: "Ecommerce Order",
               amount: Math.round(totalCartAmount * 100),

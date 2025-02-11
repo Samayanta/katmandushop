@@ -19,6 +19,10 @@ const CartSchema = new mongoose.Schema(
           required: true,
           min: 1,
         },
+        selectedColor: {
+          type: String,
+          default: "default", // Default value for products without color options
+        },
       },
     ],
   },

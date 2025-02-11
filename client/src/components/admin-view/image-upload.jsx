@@ -18,8 +18,6 @@ function ProductImageUpload({
 }) {
   const inputRef = useRef(null);
 
-  console.log(isEditMode, "isEditMode");
-
   function handleImageFileChange(event) {
     console.log(event.target.files, "event.target.files");
     const selectedFile = event.target.files?.[0];
@@ -38,26 +36,48 @@ function ProductImageUpload({
     if (droppedFile) setImageFile(droppedFile);
   }
 
-  function handleRemoveImage() {
-    setImageFile(null);
-    if (inputRef.current) {
-      inputRef.current.value = "";
-    }
-  }
-
   async function uploadImageToCloudinary() {
     setImageLoadingState(true);
     const data = new FormData();
     data.append("my_file", imageFile);
-    const response = await axios.post(
-      "http://localhost:5001/api/admin/products/upload-image",
-      data
-    );
-    console.log(response, "response");
+    try {
+      const response = await axios.post(
+        `${import.meta.env.VITE_API_URL}/api/admin/products/upload-image`,
+        data
+      );
+      console.log(response, "response");
 
-    if (response?.data?.success) {
-      setUploadedImageUrl(response.data.result.url);
+      if (response?.data?.success) {
+        setUploadedImageUrl(response.data.result.url);
+        setImageLoadingState(false);
+      }
+    } catch (error) {
+      console.error('Error uploading image:', error);
       setImageLoadingState(false);
+    }
+  }
+
+  async function deleteImageFromCloudinary() {
+    if (!uploadedImageUrl) return;
+    
+    try {
+      const publicId = uploadedImageUrl.split('/').pop().split('.')[0];
+      await axios.delete(`${import.meta.env.VITE_API_URL}/api/admin/products/delete-image`, {
+        data: { publicId }
+      });
+      setUploadedImageUrl(null);
+    } catch (error) {
+      console.error('Error deleting image:', error);
+    }
+  }
+
+  async function handleRemoveImage() {
+    if (uploadedImageUrl) {
+      await deleteImageFromCloudinary();
+    }
+    setImageFile(null);
+    if (inputRef.current) {
+      inputRef.current.value = "";
     }
   }
 
@@ -84,6 +104,7 @@ function ProductImageUpload({
           ref={inputRef}
           onChange={handleImageFileChange}
           disabled={isEditMode}
+          accept="image/*"
         />
         {!imageFile ? (
           <Label

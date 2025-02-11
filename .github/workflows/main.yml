@@ -1,0 +1,148 @@
+name: MERN E-commerce CI/CD
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+env:
+  NODE_VERSION: '18.x'
+
+jobs:
+  test:
+    name: Test and Security Check
+    runs-on: ubuntu-latest
+    
+    services:
+      mongodb:
+        image: mongo:latest
+        ports:
+          - 27017:27017
+      redis:
+        image: redis:latest
+        ports:
+          - 6379:6379
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install Dependencies (Backend)
+        working-directory: ./server
+        run: |
+          npm ci
+          npm audit fix
+
+      - name: Install Dependencies (Frontend)
+        working-directory: ./client
+        run: |
+          npm ci
+          npm audit fix
+
+      - name: Run Tests (Backend)
+        working-directory: ./server
+        env:
+          NODE_ENV: test
+          MONGO_URI: mongodb://localhost:27017/test
+          JWT_SECRET: test-secret
+        run: npm test
+
+      - name: Run Tests (Frontend)
+        working-directory: ./client
+        run: npm test -- --passWithNoTests
+
+      - name: Security Audit
+        run: |
+          npm audit --production --audit-level=high
+          
+  build:
+    name: Build and Push
+    needs: test
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Build Frontend
+        working-directory: ./client
+        env:
+          VITE_API_URL: ${{ secrets.VITE_API_URL }}
+        run: |
+          npm ci
+          npm run build
+
+      - name: Deploy Frontend
+        run: |
+          rsync -avz --delete ./client/dist/ ubuntu@${{ secrets.SERVER_IP }}:/var/www/html/
+
+  deploy:
+    name: Deploy
+    needs: build
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Setup SSH
+        uses: webfactory/ssh-agent@v0.7.0
+        with:
+          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+
+      - name: Add Known Hosts
+        run: |
+          mkdir -p ~/.ssh
+          ssh-keyscan -H ${{ secrets.SERVER_IP }} >> ~/.ssh/known_hosts
+
+      - name: Deploy Backend
+        env:
+          SERVER_IP: ${{ secrets.SERVER_IP }}
+          DEPLOY_PATH: /var/www/mern-ecommerce
+          PM2_PATH: /usr/local/bin/pm2
+        run: |
+          # Copy new code
+          rsync -avz --delete \
+            --exclude 'node_modules' \
+            --exclude '.env' \
+            --exclude 'logs' \
+            ./server/ ubuntu@${SERVER_IP}:${DEPLOY_PATH}/server/
+
+          # Deploy commands
+          ssh ubuntu@${SERVER_IP} "cd ${DEPLOY_PATH}/server && \
+            npm ci --production && \
+            $PM2_PATH reload ecosystem.config.js --env production"
+
+      - name: Health Check
+        run: |
+          for i in {1..6}; do
+            if curl -s "https://${{ secrets.DOMAIN }}/api/health" | grep -q "ok"; then
+              echo "Health check passed"
+              exit 0
+            fi
+            echo "Waiting for service to be up..."
+            sleep 10
+          done
+          echo "Health check failed"
+          exit 1
+
+      - name: Notify on Slack
+        if: always()
+        uses: 8398a7/action-slack@v3
+        with:
+          status: ${{ job.status }}
+          fields: repo,message,commit,author,action,eventName,workflow
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
