@@ -52,17 +52,7 @@ mongoose
 
 // Security middleware
 app.use(helmet({
-  contentSecurityPolicy: {
-    directives: {
-      defaultSrc: ["'self'"],
-      scriptSrc: ["'self'", "'unsafe-inline'"],
-      styleSrc: ["'self'", "'unsafe-inline'"],
-      imgSrc: ["'self'", "data:", "https:"],
-      connectSrc: ["'self'", ...ALLOWED_ORIGINS],
-    },
-  },
-  crossOriginEmbedderPolicy: false,
-  crossOriginResourcePolicy: false,
+  contentSecurityPolicy: false
 }));
 
 // Rate limiting
@@ -122,24 +112,16 @@ app.use((err, req, res, next) => {
   });
 });
 
-// Serve static files from React build
-app.use(express.static('public'));
+// Serve static files from the React app
+app.use(express.static(path.join(__dirname, 'public')));
 
 // Handle React routing, return all requests to React app
-app.get('*', (req, res, next) => {
+app.get('*', (req, res) => {
   if (req.path.startsWith('/api/')) {
     next();
   } else {
     res.sendFile(path.join(__dirname, 'public', 'index.html'));
   }
-});
-
-// Handle unmatched API routes
-app.use('/api/*', (req, res) => {
-  res.status(404).json({
-    status: 'error',
-    message: 'API route not found'
-  });
 });
 
 app.listen(PORT, () => console.log(`🚀 Server is now running on port ${PORT}`));

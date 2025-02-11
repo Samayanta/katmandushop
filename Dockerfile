@@ -1,32 +1,34 @@
-# Use Node.js runtime
-FROM node:18-alpine
+# Build stage for frontend
+FROM node:18-alpine AS frontend-build
+WORKDIR /app/client
+COPY client/package*.json ./
+RUN npm ci
+COPY client/ ./
+RUN npm run build
 
-# Set working directory
+# Production stage
+FROM node:18-alpine
 WORKDIR /app
 
-# Copy package.json files
-COPY server/package*.json ./server/
-COPY client/package*.json ./client/
+# Copy backend dependencies and install
+COPY server/package*.json ./
+RUN npm ci
 
-# Install dependencies
-RUN cd server && npm ci
-RUN cd client && npm ci
+# Copy backend source
+COPY server/ ./
 
-# Copy source code
-COPY server/ ./server/
-COPY client/ ./client/
+# Copy built frontend files to public directory
+COPY --from=frontend-build /app/client/dist ./public
 
-# Copy start script
-COPY start.sh .
-RUN chmod +x start.sh
+# Create .env file for frontend
+RUN echo "VITE_API_URL=$VITE_API_URL" > /app/public/.env
 
 # Set environment variables
 ENV NODE_ENV=production
 ENV PORT=5001
 
-# Expose ports
+# Expose port
 EXPOSE 5001
-EXPOSE 5173
 
-# Start both servers
-CMD ["./start.sh"]
+# Start the server
+CMD ["npm", "run", "prod"]

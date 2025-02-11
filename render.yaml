@@ -13,11 +13,13 @@ services:
         value: production
       - key: PORT
         value: 5001
+      - key: ALLOWED_ORIGINS
+        value: https://${RENDER_EXTERNAL_URL}
+      - key: VITE_API_URL
+        value: https://${RENDER_EXTERNAL_URL}
       - key: MONGO_URI
         sync: false
       - key: JWT_SECRET
-        sync: false
-      - key: ALLOWED_ORIGINS
         sync: false
       - key: UPSTASH_REDIS_REST_URL
         sync: false
@@ -31,10 +33,7 @@ services:
         sync: false
       - key: CLOUDINARY_API_SECRET
         sync: false
-      - key: VITE_API_URL
-        sync: false
       - key: VITE_KHALTI_PUBLIC_KEY
         sync: false
     healthCheckPath: /api/health
     dockerfilePath: ./Dockerfile
-    dockerCommand: ./start.sh
