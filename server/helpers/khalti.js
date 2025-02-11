@@ -63,9 +63,11 @@ class KhaltiService {
       const amountInPaisa = Math.round(amount * 100);
       console.log('Amount in paisa:', amountInPaisa);
 
+      // Ensure proper URL formatting by handling slashes correctly
+      const baseUrl = this.clientUrl.endsWith('/') ? this.clientUrl.slice(0, -1) : this.clientUrl;
       const payload = {
-        return_url: `${this.clientUrl}shop/payment-success`,
-        website_url: this.clientUrl.replace(/\/$/, ''),
+        return_url: `${baseUrl}/shop/payment-success`,
+        website_url: baseUrl,
         amount: amountInPaisa.toString(),
         purchase_order_id: orderId,
         purchase_order_name: `Order #${orderId}`,
