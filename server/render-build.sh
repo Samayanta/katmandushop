@@ -2,8 +2,11 @@
 # Exit on error
 set -o errexit
 
-npm ci
-npm run build  # If you have a build script
+# Install dependencies
+npm ci --production
 
-# For potential database migrations or other setup
-# npm run db:migrate
+# Set production environment
+export NODE_ENV=production
+
+# Start the application
+node server.js
