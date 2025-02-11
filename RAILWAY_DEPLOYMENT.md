@@ -4,7 +4,8 @@
 
 1. Create a new project in Railway
 2. Connect your GitHub repository to Railway
-3. Set up the following environment variables in Railway:
+3. Make sure you have Node.js v18 or later installed locally
+4. Set up the following environment variables in Railway:
 
 ### Required Environment Variables
 
@@ -19,14 +20,14 @@ MONGO_URI=mongodb+srv://samayantarajghimire:Momlopme1@cluster0.v1pzu.mongodb.net
 
 # Security
 JWT_SECRET=<your-secure-jwt-secret>
-ALLOWED_ORIGINS=https://katmandushop.netlify.app/
+ALLOWED_ORIGINS=https://katmandushop.netlify.app
 
 # Upstash Redis Configuration
 UPSTASH_REDIS_REST_URL=https://certain-polecat-11092.upstash.io
 UPSTASH_REDIS_REST_TOKEN=AStUAAIjcDE5NmIwMTg3MWQzYzY0MDc4OTNiZjEyYzEyMmY4MTdjOXAxMA
 
 # Payment Gateway
-KHALTI_SECRET_KEY=69ed8109689f46a4b0fa823381aaff7c
+KHALTI_SECRET_KEY=39de3bb7168c488aa30f9a52cc8e3e72
 KHALTI_PUBLIC_KEY=69ed8109689f46a4b0fa823381aaff7c
 
 # Cloudinary Configuration
@@ -40,13 +41,23 @@ SENTRY_DSN=<your-sentry-dsn>
 
 ## Deployment Steps
 
-1. Push your code to GitHub
+1. Ensure your code is pushed to GitHub
 2. Go to Railway dashboard
 3. Click "New Project"
 4. Select "Deploy from GitHub repo"
 5. Choose your repository
 6. Configure environment variables as listed above
-7. Railway will automatically deploy your application
+7. Railway will automatically deploy your application using the following configuration files:
+   - `railway.json`: Defines build and deploy settings
+   - `.railwayignore`: Specifies files to exclude from deployment
+   - `Procfile`: Defines the web process
+
+## Project Structure
+The deployment is configured to:
+- Only deploy the server directory
+- Use Node.js v18
+- Install production dependencies only
+- Automatically restart on failure (up to 10 attempts)
 
 ## Post-deployment
 
