@@ -24,6 +24,8 @@ import UserCartWrapper from "./cart-wrapper";
 import { useEffect, useState } from "react";
 import { fetchCartItems } from "@/store/shop/cart-slice";
 import { Label } from "../ui/label";
+import { useToast } from "../ui/use-toast";
+import { fetchAllFilteredProducts } from "@/store/shop/products-slice";
 
 function MenuItems() {
   const navigate = useNavigate();
@@ -67,29 +69,54 @@ function MenuItems() {
 
 function HeaderRightContent() {
   const { user } = useSelector((state) => state.auth);
-  const { cartItems } = useSelector((state) => state.shopCart);
+  const { cartItems, isLoading: cartLoading } = useSelector((state) => state.shopCart);
   const [openCartSheet, setOpenCartSheet] = useState(false);
   const navigate = useNavigate();
   const dispatch = useDispatch();
+  const { toast } = useToast();
 
   function handleLogout() {
     dispatch(logoutUser());
   }
 
+  // Fetch cart items when component mounts or when cart updates are made
   useEffect(() => {
-    dispatch(fetchCartItems(user?.id));
-  }, [dispatch]);
+    if (user?.id) {
+      dispatch(fetchCartItems(user.id)).unwrap()
+        .catch(error => {
+          toast({
+            title: "Failed to fetch cart items",
+            description: error.message,
+            variant: "destructive"
+          });
+        });
+    }
+  }, [dispatch, user?.id]);
 
-  console.log(cartItems, "sangam");
+  // Load products when cart is opened
+  useEffect(() => {
+    if (openCartSheet) {
+      dispatch(fetchAllFilteredProducts({ filterParams: {}, sortParams: "" }))
+        .unwrap()
+        .catch(error => {
+          toast({
+            title: "Failed to load products",
+            description: error.message,
+            variant: "destructive"
+          });
+        });
+    }
+  }, [dispatch, openCartSheet]);
 
   return (
     <div className="flex lg:items-center lg:flex-row flex-col gap-4">
-      <Sheet open={openCartSheet} onOpenChange={() => setOpenCartSheet(false)}>
+      <Sheet open={openCartSheet} onOpenChange={setOpenCartSheet}>
         <Button
           onClick={() => setOpenCartSheet(true)}
           variant="outline"
           size="icon"
           className="relative"
+          disabled={cartLoading}
         >
           <ShoppingCart className="w-6 h-6" />
           <span className="absolute top-[-5px] right-[2px] font-bold text-sm">
@@ -99,19 +126,15 @@ function HeaderRightContent() {
         </Button>
         <UserCartWrapper
           setOpenCartSheet={setOpenCartSheet}
-          cartItems={
-            cartItems && cartItems.items && cartItems.items.length > 0
-              ? cartItems.items
-              : []
-          }
+          cartItems={cartItems || { items: [] }}
         />
       </Sheet>
 
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Avatar className="bg-black">
+          <Avatar className="bg-black cursor-pointer">
             <AvatarFallback className="bg-black text-white font-extrabold">
-              {user?.userName[0].toUpperCase()}
+              {user?.userName ? user.userName[0].toUpperCase() : 'U'}
             </AvatarFallback>
           </Avatar>
         </DropdownMenuTrigger>

@@ -1,0 +1,38 @@
+# Dependencies
+node_modules
+*/node_modules
+
+# Build files
+*/dist
+*/build
+
+# Environment files
+.env
+*/.env
+.env.*
+!.env.example
+
+# Version control
+.git
+.gitignore
+
+# IDE files
+.vscode
+.idea
+
+# Logs
+*.log
+npm-debug.log*
+
+# System files
+.DS_Store
+
+# PM2 files
+ecosystem.config.js
+
+# Temporary files
+*.tmp
+*.temp
+
+# Keep the start script
+!start.sh

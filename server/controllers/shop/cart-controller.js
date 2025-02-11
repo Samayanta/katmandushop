@@ -35,6 +35,14 @@ const addToCart = async (req, res) => {
       });
     }
 
+    // Check stock availability
+    if (quantity > product.totalStock) {
+      return res.status(400).json({
+        success: false,
+        message: `Only ${product.totalStock} items available in stock`,
+      });
+    }
+
     // Check if color selection is required
     if (product.colors && product.colors.length > 0 && !selectedColor) {
       return res.status(400).json({
@@ -57,6 +65,14 @@ const addToCart = async (req, res) => {
     );
     
     if (sameColorIndex !== -1) {
+      // Check if total quantity (existing + new) exceeds stock
+      const totalQuantity = cart.items[sameColorIndex].quantity + quantity;
+      if (totalQuantity > product.totalStock) {
+        return res.status(400).json({
+          success: false,
+          message: `Cannot add ${quantity} more items. Only ${product.totalStock - cart.items[sameColorIndex].quantity} more available.`,
+        });
+      }
       // Update quantity if same product and color exists
       cart.items[sameColorIndex].quantity += quantity;
     } else {
@@ -69,9 +85,30 @@ const addToCart = async (req, res) => {
     }
 
     await cart.save();
+    
+    // Populate cart items with product details before sending response
+    await cart.populate({
+      path: "items.productId",
+      select: "image title price salePrice colors",
+    });
+
+    const populateCartItems = cart.items.map((item) => ({
+      productId: item.productId._id,
+      image: item.productId.image,
+      title: item.productId.title,
+      price: item.productId.price,
+      salePrice: item.productId.salePrice,
+      quantity: item.quantity,
+      selectedColor: item.selectedColor,
+      availableColors: item.productId.colors || [],
+    }));
+
     res.status(200).json({
       success: true,
-      data: cart,
+      data: {
+        ...cart._doc,
+        items: populateCartItems,
+      },
     });
   } catch (error) {
     console.log("Cart addition error:", error);
@@ -96,7 +133,7 @@ const fetchCartItems = async (req, res) => {
 
     const cart = await Cart.findOne({ userId }).populate({
       path: "items.productId",
-      select: "image title price salePrice colors",
+      select: "image title price salePrice colors totalStock",
     });
 
     if (!cart) {
@@ -115,16 +152,35 @@ const fetchCartItems = async (req, res) => {
       await cart.save();
     }
 
-    const populateCartItems = validItems.map((item) => ({
-      productId: item.productId._id,
-      image: item.productId.image,
-      title: item.productId.title,
-      price: item.productId.price,
-      salePrice: item.productId.salePrice,
-      quantity: item.quantity,
-      selectedColor: item.selectedColor,
-      availableColors: item.productId.colors || [],
-    }));
+    // Check and adjust quantities if they exceed current stock
+    let quantityAdjusted = false;
+    const populateCartItems = validItems.map((item) => {
+      let quantity = item.quantity;
+      if (quantity > item.productId.totalStock) {
+        quantity = item.productId.totalStock;
+        quantityAdjusted = true;
+      }
+      
+      return {
+        productId: item.productId._id,
+        image: item.productId.image,
+        title: item.productId.title,
+        price: item.productId.price,
+        salePrice: item.productId.salePrice,
+        quantity: quantity,
+        selectedColor: item.selectedColor,
+        availableColors: item.productId.colors || [],
+      };
+    });
+
+    if (quantityAdjusted) {
+      // Update cart with adjusted quantities
+      cart.items = validItems.map((item) => ({
+        ...item,
+        quantity: Math.min(item.quantity, item.productId.totalStock)
+      }));
+      await cart.save();
+    }
 
     res.status(200).json({
       success: true,
@@ -166,6 +222,14 @@ const updateCartItemQty = async (req, res) => {
       return res.status(404).json({
         success: false,
         message: "Product not found!",
+      });
+    }
+
+    // Check stock availability
+    if (quantity > product.totalStock) {
+      return res.status(400).json({
+        success: false,
+        message: `Only ${product.totalStock} items available in stock`,
       });
     }
 

@@ -33,44 +33,46 @@ function PaymentSuccessPage() {
       }
 
       try {
-        // Clear cart first to avoid race conditions
-        dispatch(resetCart());
-          
-        // Clear backend cart if user exists
-        if (user?.id) {
-          await dispatch(clearUserCart(user.id)).unwrap();
-        }
-
-        // Then verify payment
         const result = await dispatch(capturePayment({ pidx, orderId })).unwrap();
         
         if (result?.success) {
+          // First reset local cart state
+          dispatch(resetCart());
+          
+          // Then clear backend cart if user exists
+          if (user?.id) {
+            await dispatch(clearUserCart(user.id)).unwrap();
+          }
+          
           // Refresh admin orders list
           dispatch(getAllOrdersForAdmin());
+          
           setPaymentStatus('Completed');
         } else {
           throw new Error('Payment verification failed');
         }
       } catch (error) {
         console.error('Error processing payment:', error);
-        // Check if status in URL is "Completed" regardless of API error
-        if (searchParams.get('status') === 'Completed') {
-          // Payment completed successfully according to Khalti
-          setPaymentStatus('Completed');
-          setError(null);
-        } else {
-          setError('Payment verification failed. If amount was deducted, please contact support.');
-          setPaymentStatus('Failed');
-        }
+          // Check if status in URL is "Completed" regardless of API error
+          if (searchParams.get('status') === 'Completed') {
+            // If status is completed, treat as success even if API call failed
+            setPaymentStatus('Completed');
+            setError(null); // Clear any error since we're treating this as success
+            console.error('Non-critical payment verification error:', error);
+          } else if (error.message?.includes('Payment status is')) {
+            setError('Your payment is still being processed. Please check your order status in a few minutes.');
+            setPaymentStatus('Processing');
+          } else {
+            setError('Failed to process payment. Please contact support.');
+            setPaymentStatus('Failed');
+          }
       } finally {
         setIsProcessing(false);
       }
     };
 
-    if (pidx && orderId) {
-      processPayment();
-    }
-  }, [dispatch, user, pidx, orderId]);
+    processPayment();
+  }, [dispatch, user, pidx, orderId, cartItems]);
 
   return (
     <div className="min-h-screen flex items-center justify-center p-4">

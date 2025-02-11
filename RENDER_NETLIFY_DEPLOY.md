@@ -5,8 +5,8 @@
 1. Create a new Web Service on Render
    - Connect your GitHub repository
    - Choose the server directory as the root directory
-   - Set Build Command: `npm ci --production`
-   - Set Start Command: `node server.js`
+   - Set Build Command: `./render-build.sh`
+   - Set Start Command: `npm run prod`
 
 2. Configure Environment Variables on Render:
    ```

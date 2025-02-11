@@ -1,6 +1,7 @@
 require("dotenv").config(); // Load environment variables
 const express = require("express");
 const mongoose = require("mongoose");
+const path = require("path");
 const cookieParser = require("cookie-parser");
 const cors = require("cors");
 const helmet = require("helmet");
@@ -121,11 +122,23 @@ app.use((err, req, res, next) => {
   });
 });
 
-// Handle unmatched routes
-app.use((req, res) => {
+// Serve static files from React build
+app.use(express.static('public'));
+
+// Handle React routing, return all requests to React app
+app.get('*', (req, res, next) => {
+  if (req.path.startsWith('/api/')) {
+    next();
+  } else {
+    res.sendFile(path.join(__dirname, 'public', 'index.html'));
+  }
+});
+
+// Handle unmatched API routes
+app.use('/api/*', (req, res) => {
   res.status(404).json({
     status: 'error',
-    message: 'Route not found'
+    message: 'API route not found'
   });
 });
 
