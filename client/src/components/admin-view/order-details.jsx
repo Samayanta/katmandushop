@@ -1,10 +1,8 @@
 import { useState } from "react";
 import CommonForm from "../common/form";
-import { DialogContent } from "../ui/dialog";
-import { Label } from "../ui/label";
-import { Separator } from "../ui/separator";
+import { DialogContent, DialogHeader, DialogTitle, DialogDescription } from "../ui/dialog";
 import { Badge } from "../ui/badge";
-import { useDispatch, useSelector } from "react-redux";
+import { useDispatch } from "react-redux";
 import {
   getAllOrdersForAdmin,
   getOrderDetailsForAdmin,
@@ -13,145 +11,217 @@ import {
 import { useToast } from "../ui/use-toast";
 
 const initialFormData = {
-  status: "",
+  status: "select",
 };
 
 function AdminOrderDetailsView({ orderDetails }) {
   const [formData, setFormData] = useState(initialFormData);
-  const { user } = useSelector((state) => state.auth);
   const dispatch = useDispatch();
   const { toast } = useToast();
-
-  console.log(orderDetails, "orderDetailsorderDetails");
+  
+  const defaultFilters = {
+    status: 'all',
+    paymentStatus: 'all',
+    dateRange: {
+      start: null,
+      end: null
+    }
+  };
 
   function handleUpdateStatus(event) {
     event.preventDefault();
     const { status } = formData;
+
+    if (!status || status === "select") {
+      toast({
+        title: "Please select a status",
+        variant: "destructive",
+      });
+      return;
+    }
 
     dispatch(
       updateOrderStatus({ id: orderDetails?._id, orderStatus: status })
     ).then((data) => {
       if (data?.payload?.success) {
         dispatch(getOrderDetailsForAdmin(orderDetails?._id));
-        dispatch(getAllOrdersForAdmin());
+        dispatch(getAllOrdersForAdmin({ filters: defaultFilters, pagination: { currentPage: 1, itemsPerPage: 10 }, sort: { field: 'orderDate', direction: 'desc' } }));
         setFormData(initialFormData);
         toast({
           title: data?.payload?.message,
         });
+      } else if (data?.error) {
+        toast({
+          title: data.error,
+          variant: "destructive",
+        });
       }
+    }).catch((error) => {
+      toast({
+        title: error?.message || "Failed to update order status",
+        variant: "destructive",
+      });
     });
   }
 
+  const getStatusBadgeColor = (status) => {
+    const statusColors = {
+      pending: "bg-yellow-500",
+      processing: "bg-blue-500",
+      completed: "bg-green-500",
+      rejected: "bg-red-500",
+      paid: "bg-green-500",
+      failed: "bg-red-500",
+      default: "bg-gray-500"
+    };
+    return statusColors[status] || statusColors.default;
+  };
+
   return (
-    <DialogContent className="sm:max-w-[600px]">
-      <div className="grid gap-6">
-        <div className="grid gap-2">
-          <div className="flex mt-6 items-center justify-between">
-            <p className="font-medium">Order ID</p>
-            <Label>{orderDetails?._id}</Label>
+    <DialogContent className="sm:max-w-[800px] max-h-[90vh] overflow-y-auto">
+      <DialogHeader>
+        <DialogTitle>Order Details</DialogTitle>
+        <DialogDescription>
+          Order placed on {new Date(orderDetails?.orderDate).toLocaleString()}
+        </DialogDescription>
+      </DialogHeader>
+
+      <div className="grid gap-6 py-4">
+        {/* Order Summary Card */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 p-4 bg-muted rounded-lg">
+          <div>
+            <p className="text-sm text-muted-foreground">Order ID</p>
+            <p className="font-medium truncate">{orderDetails?._id}</p>
           </div>
-          <div className="flex mt-2 items-center justify-between">
-            <p className="font-medium">Order Date</p>
-            <Label>{orderDetails?.orderDate.split("T")[0]}</Label>
+          <div>
+            <p className="text-sm text-muted-foreground">Order Status</p>
+            <Badge className={getStatusBadgeColor(orderDetails?.orderStatus)}>
+              {orderDetails?.orderStatus}
+            </Badge>
           </div>
-          <div className="flex mt-2 items-center justify-between">
-            <p className="font-medium">Order Price</p>
-            <Label>${orderDetails?.totalAmount}</Label>
+          <div>
+            <p className="text-sm text-muted-foreground">Payment Method</p>
+            <p className="font-medium">{orderDetails?.paymentMethod}</p>
           </div>
-          <div className="flex mt-2 items-center justify-between">
-            <p className="font-medium">Payment method</p>
-            <Label>{orderDetails?.paymentMethod}</Label>
-          </div>
-          <div className="flex mt-2 items-center justify-between">
-            <p className="font-medium">Payment Status</p>
-            <Label>
-              <Badge
-                className={`py-1 px-3 ${
-                  orderDetails?.paymentStatus === "paid"
-                    ? "bg-green-500"
-                    : orderDetails?.paymentStatus === "failed"
-                    ? "bg-red-600"
-                    : "bg-yellow-500"
-                }`}
-              >
-                {orderDetails?.paymentStatus}
-              </Badge>
-            </Label>
-          </div>
-          <div className="flex mt-2 items-center justify-between">
-            <p className="font-medium">Order Status</p>
-            <Label>
-              <Badge
-                className={`py-1 px-3 ${
-                  orderDetails?.orderStatus === "confirmed"
-                    ? "bg-green-500"
-                    : orderDetails?.orderStatus === "rejected"
-                    ? "bg-red-600"
-                    : "bg-black"
-                }`}
-              >
-                {orderDetails?.orderStatus}
-              </Badge>
-            </Label>
+          <div>
+            <p className="text-sm text-muted-foreground">Payment Status</p>
+            <Badge className={getStatusBadgeColor(orderDetails?.paymentStatus)}>
+              {orderDetails?.paymentStatus}
+            </Badge>
           </div>
         </div>
-        <Separator />
-        <div className="grid gap-4">
-          <div className="grid gap-2">
-            <div className="font-medium">Order Details</div>
-            <ul className="grid gap-3">
-              {orderDetails?.cartItems && orderDetails?.cartItems.length > 0
-                ? orderDetails?.cartItems.map((item) => (
-                    <li className="flex items-center justify-between">
-                      <span>Title: {item.title}</span>
-                      <span>Quantity: {item.quantity}</span>
-                      <span>Color: {item.selectedColor}</span>
-                      <span>Price: ${item.price}</span>
-                    </li>
-                  ))
-                : null}
-            </ul>
+
+        {/* Order Items */}
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <h3 className="font-semibold text-lg">Order Items</h3>
+            <Badge variant="outline">
+              Total Items: {orderDetails?.cartItems?.length || 0}
+            </Badge>
           </div>
-        </div>
-        <div className="grid gap-4">
-          <div className="grid gap-2">
-            <div className="font-medium">Shipping Info</div>
-            <div className="grid gap-0.5 text-muted-foreground">
-              <div className="font-medium mb-1">Customer Details</div>
-              <span>Name: {orderDetails?.user?.name}</span>
-              <span>Email: {orderDetails?.user?.email}</span>
-              <div className="font-medium mt-3 mb-1">Address</div>
-              <span>{orderDetails?.addressInfo?.address}</span>
-              <span>{orderDetails?.addressInfo?.city}</span>
-              <span>{orderDetails?.addressInfo?.pincode}</span>
-              <span>{orderDetails?.addressInfo?.phone}</span>
-              <span>{orderDetails?.addressInfo?.notes}</span>
+          <div className="space-y-3">
+            {orderDetails?.cartItems?.map((item) => (
+              <div
+                key={item.productId}
+                className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50 transition-colors"
+              >
+                <div className="flex items-center gap-4">
+                  {item.image && (
+                    <img
+                      src={item.image}
+                      alt={item.title}
+                      className="w-16 h-16 object-cover rounded"
+                    />
+                  )}
+                  <div>
+                    <p className="font-medium">{item.title}</p>
+                    <div className="flex flex-wrap gap-2 mt-1">
+                      <Badge variant="outline">
+                        Qty: {item.quantity}
+                      </Badge>
+                      {item.selectedColor && (
+                        <Badge variant="outline" className="capitalize">
+                          Color: {item.selectedColor}
+                        </Badge>
+                      )}
+                      {item.selectedSize && (
+                        <Badge variant="outline" className="capitalize">
+                          Size: {item.selectedSize}
+                        </Badge>
+                      )}
+                      <Badge variant="outline">
+                        रु{item.price} each
+                      </Badge>
+                    </div>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <p className="font-medium">रु{Number(item.price) * item.quantity}</p>
+                  <p className="text-sm text-muted-foreground">Total</p>
+                </div>
+              </div>
+            ))}
+          </div>
+          <div className="flex justify-end pt-4 border-t">
+            <div className="text-right">
+              <p className="text-sm text-muted-foreground">Order Total</p>
+              <p className="text-xl font-bold">रु{orderDetails?.totalAmount}</p>
             </div>
           </div>
         </div>
 
-        <div>
-          <CommonForm
-            formControls={[
-              {
-                label: "Order Status",
-                name: "status",
-                componentType: "select",
-                options: [
-                  { id: "pending", label: "Pending" },
-                  { id: "inProcess", label: "In Process" },
-                  { id: "inShipping", label: "In Shipping" },
-                  { id: "delivered", label: "Delivered" },
-                  { id: "rejected", label: "Rejected" },
-                ],
-              },
-            ]}
-            formData={formData}
-            setFormData={setFormData}
-            buttonText={"Update Order Status"}
-            onSubmit={handleUpdateStatus}
-          />
+        {/* Customer Information */}
+        <div className="grid md:grid-cols-2 gap-6">
+          <div className="space-y-4">
+            <h3 className="font-semibold text-lg">Customer Details</h3>
+            <div className="space-y-2 p-4 border rounded-lg">
+              <p><span className="text-muted-foreground">Name:</span> {orderDetails?.user?.name}</p>
+              <p><span className="text-muted-foreground">Email:</span> {orderDetails?.user?.email}</p>
+            </div>
+          </div>
+
+          <div className="space-y-4">
+            <h3 className="font-semibold text-lg">Shipping Address</h3>
+            <div className="space-y-2 p-4 border rounded-lg">
+              <p className="font-medium">{orderDetails?.addressInfo?.address}</p>
+              <p>{orderDetails?.addressInfo?.city}</p>
+              <p>{orderDetails?.addressInfo?.pincode}</p>
+              <p><span className="text-muted-foreground">Phone:</span> {orderDetails?.addressInfo?.phone}</p>
+              {orderDetails?.addressInfo?.notes && (
+                <p><span className="text-muted-foreground">Notes:</span> {orderDetails?.addressInfo?.notes}</p>
+              )}
+            </div>
+          </div>
         </div>
+
+        {/* Order Status Update */}
+        {orderDetails && (
+          <div className="space-y-4">
+            <h3 className="font-semibold text-lg">Update Order Status</h3>
+            <div className="grid gap-4">
+              <CommonForm
+                formControls={[
+                  {
+                    label: "Order Status",
+                    name: "status",
+                    componentType: "select",
+                    options: [
+                      { id: "select", label: "Select Status" },
+                      { id: "pending", label: "Pending" },
+                      { id: "processing", label: "Processing" },
+                      { id: "completed", label: "Completed" },
+                      { id: "rejected", label: "Rejected" },
+                    ],
+                  },
+                ]}
+                formData={formData}
+                setFormData={setFormData}
+                buttonText="Update Status"
+                onSubmit={handleUpdateStatus}
+              />
+            </div>
+          </div>
+        )}
       </div>
     </DialogContent>
   );

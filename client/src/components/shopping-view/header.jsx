@@ -53,11 +53,11 @@ function MenuItems() {
   }
 
   return (
-    <nav className="flex flex-col mb-3 lg:mb-0 lg:items-center gap-6 lg:flex-row">
+    <nav className="flex flex-col mb-3 lg:mb-0 lg:items-center gap-4 lg:gap-6 lg:flex-row">
       {shoppingViewHeaderMenuItems.map((menuItem) => (
         <Label
           onClick={() => handleNavigate(menuItem)}
-          className="text-sm font-medium cursor-pointer"
+          className="text-sm font-medium cursor-pointer transition-colors hover:text-primary"
           key={menuItem.id}
         >
           {menuItem.label}
@@ -79,21 +79,12 @@ function HeaderRightContent() {
     dispatch(logoutUser());
   }
 
-  // Fetch cart items when component mounts or when cart updates are made
   useEffect(() => {
     if (user?.id) {
-      dispatch(fetchCartItems(user.id)).unwrap()
-        .catch(error => {
-          toast({
-            title: "Failed to fetch cart items",
-            description: error.message,
-            variant: "destructive"
-          });
-        });
+      dispatch(fetchCartItems(user.id));
     }
   }, [dispatch, user?.id]);
 
-  // Load products when cart is opened
   useEffect(() => {
     if (openCartSheet) {
       dispatch(fetchAllFilteredProducts({ filterParams: {}, sortParams: "" }))
@@ -109,19 +100,21 @@ function HeaderRightContent() {
   }, [dispatch, openCartSheet]);
 
   return (
-    <div className="flex lg:items-center lg:flex-row flex-col gap-4">
+    <div className="flex lg:items-center lg:flex-row flex-col gap-3 sm:gap-4">
       <Sheet open={openCartSheet} onOpenChange={setOpenCartSheet}>
         <Button
           onClick={() => setOpenCartSheet(true)}
           variant="outline"
           size="icon"
-          className="relative"
+          className="relative w-10 h-10 sm:w-11 sm:h-11"
           disabled={cartLoading}
         >
-          <ShoppingCart className="w-6 h-6" />
-          <span className="absolute top-[-5px] right-[2px] font-bold text-sm">
-            {cartItems?.items?.length || 0}
-          </span>
+          <ShoppingCart className="w-5 h-5 sm:w-6 sm:h-6" />
+          {cartItems?.items?.length > 0 && (
+            <span className="absolute -top-1 -right-1 min-w-[20px] h-5 rounded-full bg-primary text-primary-foreground text-xs flex items-center justify-center px-1">
+              {cartItems.items.length}
+            </span>
+          )}
           <span className="sr-only">User cart</span>
         </Button>
         <UserCartWrapper
@@ -132,13 +125,13 @@ function HeaderRightContent() {
 
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Avatar className="bg-black cursor-pointer">
-            <AvatarFallback className="bg-black text-white font-extrabold">
+          <Avatar className="bg-black cursor-pointer h-10 w-10 sm:h-11 sm:w-11">
+            <AvatarFallback className="bg-black text-white font-extrabold text-sm sm:text-base">
               {user?.userName ? user.userName[0].toUpperCase() : 'U'}
             </AvatarFallback>
           </Avatar>
         </DropdownMenuTrigger>
-        <DropdownMenuContent side="right" className="w-56">
+        <DropdownMenuContent align="end" className="w-56">
           <DropdownMenuLabel>Logged in as {user?.userName}</DropdownMenuLabel>
           <DropdownMenuSeparator />
           <DropdownMenuItem onClick={() => navigate("/shop/account")}>
@@ -160,19 +153,19 @@ function ShoppingHeader() {
   const { isAuthenticated } = useSelector((state) => state.auth);
 
   return (
-    <header className="sticky top-0 z-40 w-full border-b bg-background">
-      <div className="flex h-20 items-center justify-between px-4 md:px-6">
-        <Link to="/shop/home">
-          <img src={logo} alt="Katmandu Shop Logo" className="h-14 w-auto" />
+    <header className="sticky top-0 z-40 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+      <div className="flex h-16 sm:h-20 items-center justify-between px-3 sm:px-4 md:px-6">
+        <Link to="/shop/home" className="flex items-center">
+          <img src={logo} alt="Katmandu Shop Logo" className="h-10 sm:h-14 w-auto" />
         </Link>
         <Sheet>
           <SheetTrigger asChild>
-            <Button variant="outline" size="icon" className="lg:hidden">
-              <Menu className="h-6 w-6" />
+            <Button variant="outline" size="icon" className="lg:hidden w-10 h-10 sm:w-11 sm:h-11">
+              <Menu className="h-5 w-5 sm:h-6 sm:w-6" />
               <span className="sr-only">Toggle header menu</span>
             </Button>
           </SheetTrigger>
-          <SheetContent side="left" className="w-full max-w-xs">
+          <SheetContent side="left" className="w-[80vw] max-w-xs pt-16">
             <MenuItems />
             <HeaderRightContent />
           </SheetContent>

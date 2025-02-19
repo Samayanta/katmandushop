@@ -6,14 +6,14 @@ function AuthLayout() {
     <div className="flex min-h-screen w-full">
       <div className="hidden lg:flex flex-col items-center justify-center bg-black w-1/2 px-12">
         <div className="max-w-md space-y-8 text-center">
-          <h1 className="flex text-8xl font-extrabold tracking-tight text-white">
+          <h1 className="flex text-8xl jsutify-center font-extrabold tracking-tight text-white">
             Welcome to
           </h1>
           <div className="flex justify-center w-full">
-            <img 
-              src={logo} 
-              alt="Katmandu Shop Logo" 
-              className="w-60 h-auto object-contain"
+            <img
+              src={logo}
+              alt="Katmandu Shop Logo"
+              className="w-100 h-auto object-contain"
             />
           </div>
           <p className="text-xl text-gray-400 mt-4">
@@ -26,9 +26,9 @@ function AuthLayout() {
           <h1 className="text-4xl font-extrabold text-black mb-4">
 
           </h1>
-          <img 
-            src={logo} 
-            alt="Katmandu Shop Logo" 
+          <img
+            src={logo}
+            alt="Katmandu Shop Logo"
             className="w-40 h-auto object-contain"
           />
         </div>

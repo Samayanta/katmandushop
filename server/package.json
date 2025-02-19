@@ -27,6 +27,7 @@
     "compression": "^1.7.4",
     "cookie-parser": "^1.4.6",
     "cors": "^2.8.5",
+    "date-fns": "^4.1.0",
     "dotenv": "^16.4.7",
     "express": "^4.19.2",
     "express-mongo-sanitize": "^2.2.0",
@@ -36,9 +37,9 @@
     "mongoose": "^8.5.3",
     "morgan": "^1.10.0",
     "multer": "^1.4.5-lts.1",
-    "paypal-rest-sdk": "^1.8.1",
     "pm2": "^5.3.1",
-    "winston": "^3.11.0"
+    "winston": "^3.11.0",
+    "xlsx": "^0.18.5"
   },
   "devDependencies": {
     "eslint": "^8.56.0",

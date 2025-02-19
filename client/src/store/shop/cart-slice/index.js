@@ -8,14 +8,15 @@ const initialState = {
 
 export const addToCart = createAsyncThunk(
   "cart/addToCart",
-  async ({ userId, productId, quantity, selectedColor }) => {
+  async ({ userId, productId, quantity, selectedColor, selectedSize }) => {
     const response = await axios.post(
       "http://localhost:5001/api/shop/cart/add",
       {
         userId,
         productId,
         quantity,
-        selectedColor
+        selectedColor,
+        selectedSize
       }
     );
 
@@ -57,14 +58,15 @@ export const deleteCartItem = createAsyncThunk(
 
 export const updateCartQuantity = createAsyncThunk(
   "cart/updateCartQuantity",
-  async ({ userId, productId, quantity, selectedColor }) => {
+  async ({ userId, productId, quantity, selectedColor, selectedSize }) => {
     const response = await axios.put(
       "http://localhost:5001/api/shop/cart/update-cart",
       {
         userId,
         productId,
         quantity,
-        selectedColor
+        selectedColor,
+        selectedSize
       }
     );
 
@@ -103,7 +105,7 @@ const shoppingCartSlice = createSlice({
       })
       .addCase(fetchCartItems.rejected, (state) => {
         state.isLoading = false;
-        // Keep previous cart state on error
+        state.cartItems = { items: [] }; // Initialize with empty cart on error
       })
       .addCase(updateCartQuantity.pending, (state) => {
         state.isLoading = true;

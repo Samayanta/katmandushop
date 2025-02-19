@@ -30,6 +30,7 @@ const initialFormData = {
   totalStock: "",
   averageReview: 0,
   colors: "",
+  sizes: "", // Add sizes field
 };
 
 function AdminProducts() {
@@ -48,38 +49,43 @@ function AdminProducts() {
   function onSubmit(event) {
     event.preventDefault();
 
-    currentEditedId !== null
-      ? dispatch(
-          editProduct({
-            id: currentEditedId,
-            formData,
-          })
-        ).then((data) => {
-          console.log(data, "edit");
+    // Create the submission data
+    const submissionData = {
+      ...formData,
+      image: uploadedImageUrl,
+    };
 
-          if (data?.payload?.success) {
-            dispatch(fetchAllProducts());
-            setFormData(initialFormData);
-            setOpenCreateProductsDialog(false);
-            setCurrentEditedId(null);
-          }
+    // Handle the submission
+    if (currentEditedId !== null) {
+      dispatch(
+        editProduct({
+          id: currentEditedId,
+          formData: submissionData,
         })
-      : dispatch(
-          addNewProduct({
-            ...formData,
-            image: uploadedImageUrl,
-          })
-        ).then((data) => {
-          if (data?.payload?.success) {
-            dispatch(fetchAllProducts());
-            setOpenCreateProductsDialog(false);
-            setImageFile(null);
-            setFormData(initialFormData);
-            toast({
-              title: "Product add successfully",
-            });
-          }
-        });
+      ).then((data) => {
+        if (data?.payload?.success) {
+          dispatch(fetchAllProducts());
+          setFormData(initialFormData);
+          setOpenCreateProductsDialog(false);
+          setCurrentEditedId(null);
+          toast({
+            title: "Product updated successfully",
+          });
+        }
+      });
+    } else {
+      dispatch(addNewProduct(submissionData)).then((data) => {
+        if (data?.payload?.success) {
+          dispatch(fetchAllProducts());
+          setOpenCreateProductsDialog(false);
+          setImageFile(null);
+          setFormData(initialFormData);
+          toast({
+            title: "Product added successfully",
+          });
+        }
+      });
+    }
   }
 
   function handleDelete(getCurrentProductId) {
@@ -92,7 +98,7 @@ function AdminProducts() {
 
   function isFormValid() {
     return Object.keys(formData)
-      .filter((currentKey) => currentKey !== "averageReview")
+      .filter((currentKey) => currentKey !== "averageReview" && currentKey !== "salePrice")
       .map((key) => formData[key] !== "")
       .every((item) => item);
   }

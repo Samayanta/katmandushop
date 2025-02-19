@@ -43,16 +43,26 @@ function AdminProductTile({
               ))}
             </div>
           )}
+          {product?.sizes && product.sizes.length > 0 && (
+            <div className="flex flex-wrap gap-1 mt-2">
+              <span className="text-sm text-gray-600">Sizes:</span>
+              {product.sizes.map((size) => (
+                <Badge key={size} variant="outline" className="text-xs">
+                  {size}
+                </Badge>
+              ))}
+            </div>
+          )}
         </CardContent>
         <CardFooter className="flex justify-between items-center">
           <Button
             onClick={() => {
               setOpenCreateProductsDialog(true);
               setCurrentEditedId(product?._id);
-              // Convert colors array to comma-separated string for editing
               setFormData({
                 ...product,
-                colors: product.colors ? product.colors.join(', ') : ''
+                colors: product.colors ? product.colors.join(', ') : '',
+                sizes: product.sizes ? product.sizes.join(', ') : ''
               });
             }}
           >

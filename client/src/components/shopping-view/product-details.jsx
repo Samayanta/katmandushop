@@ -14,10 +14,11 @@ import StarRatingComponent from "../common/star-rating";
 import { useEffect, useState } from "react";
 import { addReview, getReviews } from "@/store/shop/review-slice";
 
-function ProductDetailsDialog({ open, setOpen, productDetails }) {
+const ProductDetailsDialog = ({ open, setOpen, productDetails }) => {
   const [reviewMsg, setReviewMsg] = useState("");
   const [rating, setRating] = useState(0);
   const [selectedColor, setSelectedColor] = useState("");
+  const [selectedSize, setSelectedSize] = useState(""); // Add this state
   const dispatch = useDispatch();
   const { user } = useSelector((state) => state.auth);
   const { cartItems } = useSelector((state) => state.shopCart);
@@ -33,18 +34,8 @@ function ProductDetailsDialog({ open, setOpen, productDetails }) {
   function handleAddToCart(getCurrentProductId, getTotalStock) {
     let getCartItems = cartItems.items || [];
 
-    // Debug logging
-    console.log("Adding to cart:", {
-      hasColors: productDetails?.colors?.length > 0,
-      colors: productDetails?.colors,
-      selectedColor,
-      getCurrentProductId,
-      getTotalStock
-    });
-
-    // Only require color selection if product has colors
+    // Validate color selection if product has colors
     const needsColor = productDetails?.colors?.length > 0;
-    
     if (needsColor && !selectedColor) {
       toast({
         title: "Please select a color",
@@ -53,9 +44,23 @@ function ProductDetailsDialog({ open, setOpen, productDetails }) {
       return;
     }
 
+    // Validate size selection if product has sizes
+    const needsSize = productDetails?.sizes?.length > 0;
+    if (needsSize && !selectedSize) {
+      toast({
+        title: "Please select a size",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Check stock and existing cart items
     if (getCartItems.length) {
       const indexOfCurrentItem = getCartItems.findIndex(
-        (item) => item.productId === getCurrentProductId
+        (item) =>
+          item.productId === getCurrentProductId &&
+          item.selectedColor === selectedColor &&
+          item.selectedSize === selectedSize
       );
       if (indexOfCurrentItem > -1) {
         const getQuantity = getCartItems[indexOfCurrentItem].quantity;
@@ -69,22 +74,17 @@ function ProductDetailsDialog({ open, setOpen, productDetails }) {
       }
     }
 
-    // If product has no colors, pass a default value
+    // If product has no colors/sizes, pass default values
     const color = needsColor ? selectedColor : "default";
-
-    console.log("Dispatching addToCart with:", {
-      userId: user?.id,
-      productId: getCurrentProductId,
-      quantity: 1,
-      selectedColor: color
-    });
+    const size = needsSize ? selectedSize : "default";
 
     dispatch(
       addToCart({
         userId: user?.id,
         productId: getCurrentProductId,
         quantity: 1,
-        selectedColor: color
+        selectedColor: color,
+        selectedSize: size
       })
     ).then((data) => {
       if (data?.payload?.success) {
@@ -92,19 +92,7 @@ function ProductDetailsDialog({ open, setOpen, productDetails }) {
         toast({
           title: "Product is added to cart",
         });
-      } else {
-        console.error("Failed to add to cart:", data);
-        toast({
-          title: "Failed to add product to cart",
-          variant: "destructive",
-        });
       }
-    }).catch(error => {
-      console.error("Error adding to cart:", error);
-      toast({
-        title: "Error adding product to cart",
-        variant: "destructive",
-      });
     });
   }
 
@@ -114,6 +102,7 @@ function ProductDetailsDialog({ open, setOpen, productDetails }) {
     setRating(0);
     setReviewMsg("");
     setSelectedColor("");
+    setSelectedSize(""); // Add this state
   }
 
   function handleAddReview() {
@@ -148,13 +137,13 @@ function ProductDetailsDialog({ open, setOpen, productDetails }) {
   const averageReview =
     reviews && reviews.length > 0
       ? reviews.reduce((sum, reviewItem) => sum + reviewItem.reviewValue, 0) /
-        reviews.length
+      reviews.length
       : 0;
 
   return (
     <Dialog open={open} onOpenChange={handleDialogClose}>
-      <DialogContent className="grid grid-cols-2 gap-8 sm:p-12 max-w-[90vw] sm:max-w-[80vw] lg:max-w-[70vw]">
-        <div className="relative overflow-hidden rounded-lg">
+      <DialogContent className="flex flex-col md:grid md:grid-cols-2 gap-4 md:gap-8 p-4 sm:p-6 md:p-8 lg:p-12 max-w-[95vw] sm:max-w-[85vw] lg:max-w-[75vw] overflow-y-auto max-h-[90vh] md:max-h-[85vh]">
+        <div className="relative overflow-hidden rounded-lg shrink-0">
           <img
             src={productDetails?.image}
             alt={productDetails?.title}
@@ -163,24 +152,23 @@ function ProductDetailsDialog({ open, setOpen, productDetails }) {
             className="aspect-square w-full object-cover"
           />
         </div>
-        <div className="">
+        <div className="flex flex-col flex-1 overflow-y-auto">
           <div>
-            <h1 className="text-3xl font-extrabold">{productDetails?.title}</h1>
-            <p className="text-muted-foreground text-2xl mb-5 mt-4">
+            <h1 className="text-xl sm:text-2xl md:text-3xl font-extrabold">{productDetails?.title}</h1>
+            <p className="text-muted-foreground text-base sm:text-lg md:text-xl mb-3 sm:mb-4 md:mb-5 mt-2 sm:mt-3 md:mt-4">
               {productDetails?.description}
             </p>
           </div>
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between flex-wrap gap-2">
             <p
-              className={`text-3xl font-bold text-primary ${
-                productDetails?.salePrice > 0 ? "line-through" : ""
-              }`}
+              className={`text-xl sm:text-2xl md:text-3xl font-bold text-primary ${productDetails?.salePrice > 0 ? "line-through" : ""
+                }`}
             >
-              ${productDetails?.price}
+              रू {productDetails?.price}
             </p>
             {productDetails?.salePrice > 0 ? (
-              <p className="text-2xl font-bold text-muted-foreground">
-                ${productDetails?.salePrice}
+              <p className="text-lg sm:text-xl md:text-2xl font-bold text-muted-foreground">
+                रू {productDetails?.salePrice}
               </p>
             ) : null}
           </div>
@@ -192,7 +180,7 @@ function ProductDetailsDialog({ open, setOpen, productDetails }) {
               ({averageReview.toFixed(2)})
             </span>
           </div>
-          <div className="mt-5 mb-5 space-y-4">
+          <div className="mt-3 sm:mt-4 md:mt-5 mb-3 sm:mb-4 md:mb-5 space-y-3 sm:space-y-4 flex-shrink-0">
             {productDetails?.colors && productDetails.colors.length > 0 && (
               <div>
                 <Label>Select Color</Label>
@@ -210,6 +198,26 @@ function ProductDetailsDialog({ open, setOpen, productDetails }) {
                 </Select>
               </div>
             )}
+
+            {/* Add size selection */}
+            {productDetails?.sizes && productDetails.sizes.length > 0 && (
+              <div>
+                <Label>Select Size</Label>
+                <Select onValueChange={setSelectedSize} value={selectedSize}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Choose a size" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {productDetails.sizes.map((size) => (
+                      <SelectItem key={size} value={size}>
+                        {size}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
             {productDetails?.totalStock === 0 ? (
               <Button className="w-full opacity-60 cursor-not-allowed">
                 Out of Stock
@@ -217,24 +225,19 @@ function ProductDetailsDialog({ open, setOpen, productDetails }) {
             ) : (
               <Button
                 className="w-full"
-                onClick={() =>
-                  handleAddToCart(
-                    productDetails?._id,
-                    productDetails?.totalStock
-                  )
-                }
+                onClick={() => handleAddToCart(productDetails?._id, productDetails?.totalStock)}
               >
                 Add to Cart
               </Button>
             )}
           </div>
           <Separator />
-          <div className="max-h-[300px] overflow-auto">
+          <div className="flex-1 overflow-y-auto">
             <h2 className="text-xl font-bold mb-4">Reviews</h2>
-            <div className="grid gap-6">
+            <div className="grid gap-4 sm:gap-6">
               {reviews && reviews.length > 0 ? (
                 reviews.map((reviewItem) => (
-                  <div className="flex gap-4" key={reviewItem._id}>
+                  <div className="flex gap-2 sm:gap-4" key={reviewItem._id}>
                     <Avatar className="w-10 h-10 border">
                       <AvatarFallback>
                         {reviewItem?.userName[0].toUpperCase()}
@@ -257,7 +260,7 @@ function ProductDetailsDialog({ open, setOpen, productDetails }) {
                 <h1>No Reviews</h1>
               )}
             </div>
-            <div className="mt-10 flex-col flex gap-2">
+            <div className="mt-6 sm:mt-8 md:mt-10 flex-col flex gap-2 sticky bottom-0 bg-white p-4 border-t">
               <Label>Write a review</Label>
               <div className="flex gap-1">
                 <StarRatingComponent
@@ -283,6 +286,6 @@ function ProductDetailsDialog({ open, setOpen, productDetails }) {
       </DialogContent>
     </Dialog>
   );
-}
+};
 
 export default ProductDetailsDialog;

@@ -13,6 +13,7 @@ const mongoSanitize = require("express-mongo-sanitize");
 const authRouter = require("./routes/auth/auth-routes");
 const adminProductsRouter = require("./routes/admin/products-routes");
 const adminOrderRouter = require("./routes/admin/order-routes");
+const adminAnalyticsRouter = require("./routes/admin/analytics-routes");
 
 const shopProductsRouter = require("./routes/shop/products-routes");
 const shopCartRouter = require("./routes/shop/cart-routes");
@@ -28,7 +29,9 @@ const app = express();
 const PORT = process.env.PORT || 5001;
 const MONGO_URI = process.env.MONGO_URI;
 const NODE_ENV = process.env.NODE_ENV || 'development';
-const ALLOWED_ORIGINS = process.env.ALLOWED_ORIGINS ? process.env.ALLOWED_ORIGINS.split(',') : ['http://localhost:5173'];
+const ALLOWED_ORIGINS = process.env.ALLOWED_ORIGINS 
+  ? process.env.ALLOWED_ORIGINS.split(',') 
+  : ['http://localhost:5173', 'http://127.0.0.1:5173', 'null'];
 
 // ✅ Ensure MongoDB URI is loaded
 if (!MONGO_URI) {
@@ -65,9 +68,11 @@ app.use('/api/', limiter);
 // CORS configuration
 app.use(cors({
   origin: function(origin, callback) {
-    if (!origin || ALLOWED_ORIGINS.includes(origin)) {
+    // Allow requests with no origin (like mobile apps or curl requests)
+    if (!origin || ALLOWED_ORIGINS.includes(origin) || NODE_ENV === 'development') {
       callback(null, true);
     } else {
+      console.log('CORS blocked origin:', origin);
       callback(new Error('Not allowed by CORS'));
     }
   },
@@ -80,7 +85,8 @@ app.use(cors({
     'Pragma',
   ],
   credentials: true,
-  maxAge: 86400 // CORS preflight cache for 24 hours
+  maxAge: 86400, // CORS preflight cache for 24 hours
+  exposedHeaders: ['set-cookie']
 }));
 
 // Additional middleware
@@ -94,6 +100,7 @@ app.use(morgan(NODE_ENV === 'production' ? 'combined' : 'dev')); // Logging
 app.use("/api/auth", authRouter);
 app.use("/api/admin/products", adminProductsRouter);
 app.use("/api/admin/orders", adminOrderRouter);
+app.use("/api/admin/analytics", adminAnalyticsRouter);
 app.use("/api/shop/products", shopProductsRouter);
 app.use("/api/shop/cart", shopCartRouter);
 app.use("/api/shop/address", shopAddressRouter);

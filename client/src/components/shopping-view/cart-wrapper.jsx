@@ -16,52 +16,55 @@ function UserCartWrapper({ cartItems, setOpenCartSheet }) {
   }, []); // Run once when component mounts
 
   const items = cartItems?.items || [];
-  
+
   const totalCartAmount = items.length > 0
     ? items.reduce(
-        (sum, currentItem) =>
-          sum +
-          (currentItem?.salePrice > 0
-            ? currentItem?.salePrice
-            : currentItem?.price) *
-            currentItem?.quantity,
-        0
-      )
+      (sum, currentItem) =>
+        sum +
+        (currentItem?.salePrice > 0
+          ? currentItem?.salePrice
+          : currentItem?.price) *
+        currentItem?.quantity,
+      0
+    )
     : 0;
 
   return (
-    <SheetContent className="sm:max-w-md">
-      <SheetHeader>
+    <SheetContent className="flex flex-col h-full p-0 sm:max-w-md">
+      <SheetHeader className="p-4 sm:p-6">
         <SheetTitle>Your Cart</SheetTitle>
       </SheetHeader>
-      <div className="mt-8 space-y-4">
+      <div className="flex-1 overflow-y-auto px-4 sm:px-6">
+        <div className="space-y-4">
         {items.length > 0 ? (
           items.map((item) => (
-            <UserCartItemsContent 
-              key={`${item.productId}-${item.selectedColor}`} 
-              cartItem={item} 
+            <UserCartItemsContent
+              key={`${item.productId}-${item.selectedColor}`}
+              cartItem={item}
             />
           ))
         ) : (
           <div className="text-center text-gray-500">Your cart is empty</div>
         )}
-      </div>
-      <div className="mt-8 space-y-4">
-        <div className="flex justify-between">
-          <span className="font-bold">Total</span>
-          <span className="font-bold">${totalCartAmount.toFixed(2)}</span>
         </div>
       </div>
-      <Button
-        onClick={() => {
-          navigate("/shop/checkout");
-          setOpenCartSheet(false);
-        }}
-        className="w-full mt-6"
-        disabled={items.length === 0}
-      >
-        Checkout
-      </Button>
+      <div className="border-t bg-background mt-auto p-4 sm:p-6">
+        <div className="flex justify-between mb-4">
+          <span className="text-base sm:text-lg font-bold">Total</span>
+          <span className="text-base sm:text-lg font-bold">रू {totalCartAmount.toFixed(2)}</span>
+        </div>
+        <Button
+          onClick={() => {
+            navigate("/shop/checkout");
+            setOpenCartSheet(false);
+          }}
+          className="w-full"
+          disabled={items.length === 0}
+          size="lg"
+        >
+          Checkout
+        </Button>
+      </div>
     </SheetContent>
   );
 }

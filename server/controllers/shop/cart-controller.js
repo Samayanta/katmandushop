@@ -3,7 +3,7 @@ const Product = require("../../models/Product");
 
 const addToCart = async (req, res) => {
   try {
-    const { userId, productId, quantity, selectedColor } = req.body;
+    const { userId, productId, quantity, selectedColor, selectedSize } = req.body;
 
     // Debug logging
     console.log("Add to cart request:", {
@@ -11,6 +11,7 @@ const addToCart = async (req, res) => {
       productId,
       quantity,
       selectedColor,
+      selectedSize,
       body: req.body
     });
 
@@ -43,11 +44,11 @@ const addToCart = async (req, res) => {
       });
     }
 
-    // Check if color selection is required
-    if (product.colors && product.colors.length > 0 && !selectedColor) {
+    // Check if size selection is required
+    if (product.sizes && product.sizes.length > 0 && !selectedSize) {
       return res.status(400).json({
         success: false,
-        message: "Color selection required for this product",
+        message: "Size selection required for this product",
       });
     }
 
@@ -57,39 +58,41 @@ const addToCart = async (req, res) => {
       cart = new Cart({ userId, items: [] });
     }
 
-    // Default color if product doesn't have color options
+    // Default values if product doesn't have options
     const color = product.colors?.length > 0 ? selectedColor : "default";
+    const size = product.sizes?.length > 0 ? selectedSize : "default";
 
-    const sameColorIndex = cart.items.findIndex(
-      (item) => item.productId.toString() === productId && item.selectedColor === color
+    const sameItemIndex = cart.items.findIndex(
+      (item) => 
+        item.productId.toString() === productId && 
+        item.selectedColor === color &&
+        item.selectedSize === size
     );
     
-    if (sameColorIndex !== -1) {
-      // Check if total quantity (existing + new) exceeds stock
-      const totalQuantity = cart.items[sameColorIndex].quantity + quantity;
+    if (sameItemIndex !== -1) {
+      // Check if total quantity exceeds stock
+      const totalQuantity = cart.items[sameItemIndex].quantity + quantity;
       if (totalQuantity > product.totalStock) {
         return res.status(400).json({
           success: false,
-          message: `Cannot add ${quantity} more items. Only ${product.totalStock - cart.items[sameColorIndex].quantity} more available.`,
+          message: `Cannot add ${quantity} more items. Only ${product.totalStock - cart.items[sameItemIndex].quantity} more available.`,
         });
       }
-      // Update quantity if same product and color exists
-      cart.items[sameColorIndex].quantity += quantity;
+      cart.items[sameItemIndex].quantity += quantity;
     } else {
-      // Add new item if different product or color
       cart.items.push({ 
         productId, 
         quantity, 
-        selectedColor: color
+        selectedColor: color,
+        selectedSize: size
       });
     }
 
     await cart.save();
     
-    // Populate cart items with product details before sending response
     await cart.populate({
       path: "items.productId",
-      select: "image title price salePrice colors",
+      select: "image title price salePrice colors sizes",
     });
 
     const populateCartItems = cart.items.map((item) => ({
@@ -100,7 +103,9 @@ const addToCart = async (req, res) => {
       salePrice: item.productId.salePrice,
       quantity: item.quantity,
       selectedColor: item.selectedColor,
+      selectedSize: item.selectedSize,
       availableColors: item.productId.colors || [],
+      availableSizes: item.productId.sizes || [],
     }));
 
     res.status(200).json({
@@ -133,13 +138,19 @@ const fetchCartItems = async (req, res) => {
 
     const cart = await Cart.findOne({ userId }).populate({
       path: "items.productId",
-      select: "image title price salePrice colors totalStock",
+      select: "image title price salePrice colors sizes totalStock",
     });
 
     if (!cart) {
-      return res.status(404).json({
-        success: false,
-        message: "Cart not found!",
+      // Create a new empty cart if one doesn't exist
+      cart = new Cart({ userId, items: [] });
+      await cart.save();
+      return res.status(200).json({
+        success: true,
+        data: {
+          ...cart._doc,
+          items: [],
+        },
       });
     }
 
@@ -170,6 +181,8 @@ const fetchCartItems = async (req, res) => {
         quantity: quantity,
         selectedColor: item.selectedColor,
         availableColors: item.productId.colors || [],
+        selectedSize: item.selectedSize,
+        availableSizes: item.productId.sizes || [],
       };
     });
 

@@ -19,18 +19,23 @@ function AuthLogin() {
   function onSubmit(event) {
     event.preventDefault();
 
-    dispatch(loginUser(formData)).then((data) => {
-      if (data?.payload?.success) {
+    dispatch(loginUser(formData))
+      .unwrap()
+      .then((data) => {
+        if (data.success) {
+          toast({
+            title: "Login successful",
+            description: data.message,
+          });
+        }
+      })
+      .catch((error) => {
         toast({
-          title: data?.payload?.message,
-        });
-      } else {
-        toast({
-          title: data?.payload?.message,
+          title: "Login failed",
+          description: error.message || "An unexpected error occurred",
           variant: "destructive",
         });
-      }
-    });
+      });
   }
 
   return (

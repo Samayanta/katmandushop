@@ -32,7 +32,7 @@ function ShoppingCheckout() {
         )
       : 0;
 
-  async function handleInitiateKhaltiPayment() {
+  async function handlePayment() {
     try {
       console.log('Starting payment process...');
       console.log('Cart items:', cartItems);
@@ -54,29 +54,29 @@ function ShoppingCheckout() {
 
       const orderData = {
         userId: user?.id,
-        name: user?.name,
-        email: user?.email,
         cartId: cartItems?._id,
-        cartItems: cartItems.items.map((singleCartItem) => ({
-          productId: singleCartItem?.productId,
-          title: singleCartItem?.title,
-          image: singleCartItem?.image,
-          price:
-            singleCartItem?.salePrice > 0
-              ? singleCartItem?.salePrice
-              : singleCartItem?.price,
-          quantity: singleCartItem?.quantity,
+        cartItems: cartItems.items.map((item) => ({
+          productId: item?.productId,
+          title: item?.title,
+          image: item?.image,
+          price: item?.salePrice > 0 
+            ? item?.salePrice 
+            : item?.price,
+          quantity: item?.quantity,
+          selectedColor: item?.selectedColor,
+          selectedSize: item?.selectedSize,
         })),
         addressInfo: {
           addressId: currentSelectedAddress?._id,
+          name: user?.name || currentSelectedAddress?.name || 'Customer',
           address: currentSelectedAddress?.address,
           city: currentSelectedAddress?.city,
           pincode: currentSelectedAddress?.pincode,
           phone: currentSelectedAddress?.phone,
           notes: currentSelectedAddress?.notes,
-          name: user?.name,
-          email: user?.email
         },
+        email: user?.email,
+        name: user?.name || currentSelectedAddress?.name || 'Customer',
         orderStatus: "pending",
         paymentMethod: "khalti",
         paymentStatus: "pending",
@@ -90,16 +90,18 @@ function ShoppingCheckout() {
         return;
       }
       
-      console.log('Creating order with:', orderData);
+      console.log('Creating order with:', {
+        ...orderData,
+        customerName: orderData.addressInfo.name
+      });
       setIsPaymentStart(true);
 
       try {
         const orderResponse = await dispatch(createNewOrder(orderData)).unwrap();
         console.log('Order creation response:', orderResponse);
         
-        if (orderResponse?.success) {
-            // Redirect to Khalti payment page
-            window.location.href = orderResponse.payment_url;
+        if (orderResponse?.success && orderResponse?.payment_url) {
+          window.location.href = orderResponse.payment_url;
         } else {
           throw new Error('Failed to create order');
         }
@@ -142,12 +144,18 @@ function ShoppingCheckout() {
           <div className="mt-8 space-y-4">
             <div className="flex justify-between">
               <span className="font-bold">Total</span>
-              <span className="font-bold">${totalCartAmount}</span>
+              <span className="font-bold">रू {totalCartAmount}</span>
             </div>
           </div>
-          <div className="mt-4 w-full">
+          <div className="mt-4 space-y-4 border-t pt-4">
+            <div className="flex flex-col space-y-2">
+              <label className="text-sm font-medium">Payment Method</label>
+              <div className="p-2 border rounded-md bg-gray-50">
+                <span>Khalti</span>
+              </div>
+            </div>
             <Button 
-              onClick={handleInitiateKhaltiPayment} 
+              onClick={handlePayment} 
               className="w-full"
               disabled={isPaymentStart || orderLoading}
             >

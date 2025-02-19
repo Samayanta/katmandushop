@@ -28,7 +28,7 @@ export const capturePayment = createAsyncThunk(
       "http://localhost:5001/api/shop/order/capture",
       {
         pidx,
-        orderId,
+        orderId
       }
     );
 

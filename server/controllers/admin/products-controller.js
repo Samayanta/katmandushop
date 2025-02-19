@@ -47,13 +47,15 @@ const addProduct = async (req, res) => {
       totalStock,
       averageReview,
       colors,
+      sizes, // Add sizes to destructuring
     } = req.body;
 
-    // Convert comma-separated colors string to array and trim whitespace
+    // Convert comma-separated strings to arrays and trim whitespace
     const colorArray = colors ? colors.split(',').map(color => color.trim()).filter(color => color !== '') : [];
+    const sizeArray = sizes ? sizes.split(',').map(size => size.trim()).filter(size => size !== '') : [];
 
-    console.log(averageReview, "averageReview");
-    console.log("Colors:", colorArray); // Debug log
+    console.log("Colors:", colorArray);
+    console.log("Sizes:", sizeArray);
 
     const newlyCreatedProduct = new Product({
       image,
@@ -66,6 +68,7 @@ const addProduct = async (req, res) => {
       totalStock,
       averageReview,
       colors: colorArray,
+      sizes: sizeArray, // Add sizes to product
     });
 
     await newlyCreatedProduct.save();
@@ -73,11 +76,12 @@ const addProduct = async (req, res) => {
       success: true,
       data: newlyCreatedProduct,
     });
-  } catch (e) {
-    console.log(e);
+  } catch (error) {
+    console.error(error);
     res.status(500).json({
       success: false,
-      message: "Error occured",
+      message: "Error occurred",
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
     });
   }
 };
@@ -114,6 +118,7 @@ const editProduct = async (req, res) => {
       totalStock,
       averageReview,
       colors,
+      sizes, // Add sizes to destructuring
     } = req.body;
 
     let findProduct = await Product.findById(id);
@@ -123,33 +128,36 @@ const editProduct = async (req, res) => {
         message: "Product not found",
       });
 
-    // Convert comma-separated colors string to array and trim whitespace
+    // Convert comma-separated strings to arrays and trim whitespace
     const colorArray = colors ? colors.split(',').map(color => color.trim()).filter(color => color !== '') : findProduct.colors;
+    const sizeArray = sizes ? sizes.split(',').map(size => size.trim()).filter(size => size !== '') : findProduct.sizes;
 
     findProduct.title = title || findProduct.title;
     findProduct.description = description || findProduct.description;
     findProduct.category = category || findProduct.category;
     findProduct.brand = brand || findProduct.brand;
     findProduct.price = price === "" ? 0 : price || findProduct.price;
-    findProduct.salePrice =
-      salePrice === "" ? 0 : salePrice || findProduct.salePrice;
+    findProduct.salePrice = salePrice === "" ? 0 : salePrice || findProduct.salePrice;
     findProduct.totalStock = totalStock || findProduct.totalStock;
     findProduct.image = image || findProduct.image;
     findProduct.averageReview = averageReview || findProduct.averageReview;
     findProduct.colors = colorArray;
+    findProduct.sizes = sizeArray; // Add sizes to update
 
-    console.log("Updated colors:", colorArray); // Debug log
+    console.log("Updated colors:", colorArray);
+    console.log("Updated sizes:", sizeArray);
 
     await findProduct.save();
     res.status(200).json({
       success: true,
       data: findProduct,
     });
-  } catch (e) {
-    console.log(e);
+  } catch (error) {
+    console.error(error);
     res.status(500).json({
       success: false,
-      message: "Error occured",
+      message: "Error occurred",
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
     });
   }
 };

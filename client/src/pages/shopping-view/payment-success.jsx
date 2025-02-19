@@ -18,22 +18,34 @@ function PaymentSuccessPage() {
   const { user } = useSelector((state) => state.auth);
   const { cartItems } = useSelector((state) => state.shopCart);
   
-  // Get pidx, orderId and status from URL search params
+  // Get payment params from URL
   const searchParams = new URLSearchParams(location.search);
   const pidx = searchParams.get('pidx');
   const orderId = searchParams.get('purchase_order_id');
-  const [paymentStatus, setPaymentStatus] = useState(searchParams.get('status'));
+  const [paymentStatus, setPaymentStatus] = useState(
+    searchParams.get('status')
+  );
 
   useEffect(() => {
     const processPayment = async () => {
       if (!pidx) {
-        setError('Missing payment verification token');
+        setError('Missing payment verification parameters');
         setIsProcessing(false);
         return;
       }
 
       try {
-        const result = await dispatch(capturePayment({ pidx, orderId })).unwrap();
+        // Extract orderId from sessionStorage if not in URL params
+        const storedOrderId = orderId || JSON.parse(sessionStorage.getItem('currentOrderId'));
+        
+        if (!storedOrderId) {
+          throw new Error('Order ID not found');
+        }
+
+        const result = await dispatch(capturePayment({ 
+          pidx, 
+          orderId: storedOrderId
+        })).unwrap();
         
         if (result?.success) {
           // First reset local cart state
@@ -53,19 +65,18 @@ function PaymentSuccessPage() {
         }
       } catch (error) {
         console.error('Error processing payment:', error);
-          // Check if status in URL is "Completed" regardless of API error
-          if (searchParams.get('status') === 'Completed') {
-            // If status is completed, treat as success even if API call failed
-            setPaymentStatus('Completed');
-            setError(null); // Clear any error since we're treating this as success
-            console.error('Non-critical payment verification error:', error);
-          } else if (error.message?.includes('Payment status is')) {
-            setError('Your payment is still being processed. Please check your order status in a few minutes.');
-            setPaymentStatus('Processing');
-          } else {
-            setError('Failed to process payment. Please contact support.');
-            setPaymentStatus('Failed');
-          }
+        if (searchParams.get('status') === 'Completed') {
+          // If status is completed, treat as success even if API call failed
+          setPaymentStatus('Completed');
+          setError(null);
+          console.error('Non-critical payment verification error:', error);
+        } else if (error.message?.includes('Payment status is')) {
+          setError('Your payment is still being processed. Please check your order status in a few minutes.');
+          setPaymentStatus('Processing');
+        } else {
+          setError('Failed to process payment. Please contact support.');
+          setPaymentStatus('Failed');
+        }
       } finally {
         setIsProcessing(false);
       }

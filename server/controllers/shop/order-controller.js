@@ -2,7 +2,9 @@ const khaltiService = require("../../helpers/khalti");
 const Order = require("../../models/Order");
 const Cart = require("../../models/Cart");
 const Product = require("../../models/Product");
+const User = require("../../models/User");
 const mongoose = require("mongoose");
+const emailService = require("../../helpers/email-service");
 
 const createOrder = async (req, res) => {
   try {
@@ -42,30 +44,46 @@ const createOrder = async (req, res) => {
     await newOrder.save();
     console.log('Order saved with ID:', newOrder._id);
 
-    // Initiate Khalti payment
+
+    // Initiate payment
     try {
+      // Get user details for order
+      const user = await User.findById(userId, 'userName email').lean();
+      if (!user) {
+        throw new Error('User not found');
+      }
+
+      // Create user info object
+      const userInfo = {
+        id: userId,
+        name: user.userName,
+        email: user.email,
+        phone: addressInfo.phone || ''
+      };
+
+      if (paymentMethod !== 'khalti') {
+        throw new Error('Only Khalti payment method is supported');
+      }
+
       const paymentData = await khaltiService.initiatePayment(
         totalAmount,
         newOrder._id.toString(),
         cartItems,
-        { 
-          id: userId,
-          name: req.body.name || 'Customer',
-          email: req.body.email,
-          phone: addressInfo.phone || ''
-        }
+        userInfo
       );
-
       console.log('Generated Khalti payment URL:', paymentData.payment_url);
-
-      res.status(201).json({
+      
+      const responseData = {
         success: true,
         orderId: newOrder._id,
+        provider: paymentMethod,
         payment_url: paymentData.payment_url,
         pidx: paymentData.pidx
-      });
+      };
+
+      res.status(201).json(responseData);
     } catch (error) {
-      // If Khalti config fails, delete the order and notify client
+      // If payment initiation fails, delete the order and notify client
       await Order.findByIdAndDelete(newOrder._id);
       throw new Error(`Failed to initialize payment: ${error.message}`);
     }
@@ -85,7 +103,6 @@ const capturePayment = async (req, res) => {
     const { pidx, orderId } = req.body;
     console.log('Verifying payment:', { pidx, orderId });
 
-    // Validate input
     if (!pidx || !orderId) {
       throw new Error('Missing required payment parameters');
     }
@@ -97,13 +114,10 @@ const capturePayment = async (req, res) => {
     }
 
     try {
-      // Verify payment with Khalti
       console.log('Looking up payment status with Khalti...', { pidx });
       const verificationData = await khaltiService.verifyPayment(pidx);
-      
-      console.log('Payment verification successful:', verificationData);
+      console.log('Khalti payment verification successful:', verificationData);
 
-      // Update order with payment details
       order.paymentStatus = verificationData.status === "Completed" ? "paid" : "pending";
       order.orderStatus = verificationData.status === "Completed" ? "confirmed" : "pending";
       order.paymentId = verificationData.pidx;
@@ -132,6 +146,39 @@ const capturePayment = async (req, res) => {
 
       await order.save();
       console.log('Order updated successfully');
+
+      // Get user information for email
+      const user = await User.findById(order.userId, 'userName email').lean();
+      if (!user) {
+        console.error('User not found for order:', order._id);
+        throw new Error('User not found');
+      }
+
+      // Send notifications
+      if (verificationData.status === "Completed") {
+        try {
+          // Send email to admin
+          await emailService.sendOrderNotification(
+            order,
+            user.email,
+            user.userName,
+            false // isClientEmail = false
+          );
+          console.log('Admin notification email sent');
+
+          // Send email to customer
+          await emailService.sendOrderNotification(
+            order,
+            user.email,
+            user.userName,
+            true // isClientEmail = true
+          );
+          console.log('Client notification email sent');
+        } catch (emailError) {
+          console.error('Failed to send notification email(s):', emailError);
+          // Don't throw error here to avoid affecting the response
+        }
+      }
 
       res.status(200).json({
         success: true,

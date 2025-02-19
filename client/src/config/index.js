@@ -102,6 +102,12 @@ export const addProductFormElements = [
     componentType: "textarea",
     placeholder: "Enter color options (comma separated)",
   },
+  {
+    label: "Sizes",
+    name: "sizes",
+    componentType: "textarea",
+    placeholder: "Enter size options (comma separated)",
+  },
 ];
 
 export const shoppingViewHeaderMenuItems = [

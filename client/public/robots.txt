@@ -1,0 +1,11 @@
+User-agent: *
+Allow: /
+Disallow: /admin/
+Disallow: /auth/
+Disallow: /unauth-page/
+
+# Sitemap location
+Sitemap: https://katmandushop.com/sitemap.xml
+
+# Crawl-delay
+Crawl-delay: 10

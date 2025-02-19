@@ -10,67 +10,116 @@ const initialState = {
 export const registerUser = createAsyncThunk(
   "/auth/register",
 
-  async (formData) => {
-    const response = await axios.post(
-      "http://localhost:5001/api/auth/register",
-      formData,
-      {
-        withCredentials: true,
+  async (formData, { rejectWithValue }) => {
+    try {
+      const response = await axios.post(
+        `/api/auth/register`,
+        formData,
+        {
+          withCredentials: true,
+        }
+      );
+      return response.data;
+    } catch (error) {
+      if (!error.response) {
+        return rejectWithValue({
+          message: "Network error. Please check your connection.",
+          success: false
+        });
       }
-    );
-
-    return response.data;
+      return rejectWithValue(error.response.data || {
+        message: "An error occurred during registration",
+        success: false
+      });
+    }
   }
 );
 
 export const loginUser = createAsyncThunk(
   "/auth/login",
 
-  async (formData) => {
-    const response = await axios.post(
-      "http://localhost:5001/api/auth/login",
-      formData,
-      {
-        withCredentials: true,
+  async (formData, { rejectWithValue, dispatch }) => {
+    try {
+      const response = await axios.post(
+        `/api/auth/login`,
+        formData,
+        {
+          withCredentials: true,
+        }
+      );
+      return response.data;
+    } catch (error) {
+      if (!error.response) {
+        // Network error handling
+        return rejectWithValue({
+          message: "Network error. Please check your connection.",
+          success: false
+        });
       }
-    );
-
-    return response.data;
+      return rejectWithValue(error.response.data || {
+        message: "An error occurred while logging in",
+        success: false
+      });
+    }
   }
 );
 
 export const logoutUser = createAsyncThunk(
   "/auth/logout",
 
-  async () => {
-    const response = await axios.post(
-      "http://localhost:5001/api/auth/logout",
-      {},
-      {
-        withCredentials: true,
+  async (_, { rejectWithValue }) => {
+    try {
+      const response = await axios.post(
+        `${import.meta.env.VITE_API_URL}/api/auth/logout`,
+        {},
+        {
+          withCredentials: true,
+        }
+      );
+      return response.data;
+    } catch (error) {
+      if (!error.response) {
+        return rejectWithValue({
+          message: "Network error. Please check your connection.",
+          success: false
+        });
       }
-    );
-
-    return response.data;
+      return rejectWithValue(error.response.data || {
+        message: "An error occurred during logout",
+        success: false
+      });
+    }
   }
 );
 
 export const checkAuth = createAsyncThunk(
   "/auth/checkauth",
 
-  async () => {
-    const response = await axios.get(
-      "http://localhost:5001/api/auth/check-auth",
-      {
-        withCredentials: true,
-        headers: {
-          "Cache-Control":
-            "no-store, no-cache, must-revalidate, proxy-revalidate",
-        },
+  async (_, { rejectWithValue }) => {
+    try {
+      const response = await axios.get(
+        `${import.meta.env.VITE_API_URL}/api/auth/check-auth`,
+        {
+          withCredentials: true,
+          headers: {
+            "Cache-Control":
+              "no-store, no-cache, must-revalidate, proxy-revalidate",
+          },
+        }
+      );
+      return response.data;
+    } catch (error) {
+      if (!error.response) {
+        return rejectWithValue({
+          message: "Network error. Please check your connection.",
+          success: false
+        });
       }
-    );
-
-    return response.data;
+      return rejectWithValue(error.response.data || {
+        message: "An error occurred while checking authentication",
+        success: false
+      });
+    }
   }
 );
 
