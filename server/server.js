@@ -26,11 +26,15 @@ const commonFeatureRouter = require("./routes/common/feature-routes");
 const healthRouter = require("./routes/common/health-routes");
 
 const app = express();
+
+// Trust proxy - important for rate limiting behind nginx
+app.set('trust proxy', true);
+
 const PORT = process.env.PORT || 5001;
 const MONGO_URI = process.env.MONGO_URI;
 const NODE_ENV = process.env.NODE_ENV || 'development';
-const ALLOWED_ORIGINS = process.env.ALLOWED_ORIGINS 
-  ? process.env.ALLOWED_ORIGINS.split(',') 
+const ALLOWED_ORIGINS = process.env.ALLOWED_ORIGINS
+  ? process.env.ALLOWED_ORIGINS.split(',')
   : ['http://localhost:5173', 'http://127.0.0.1:5173', 'null'];
 
 // ✅ Ensure MongoDB URI is loaded
@@ -67,7 +71,7 @@ app.use('/api/', limiter);
 
 // CORS configuration
 app.use(cors({
-  origin: function(origin, callback) {
+  origin: function (origin, callback) {
     // Allow requests with no origin (like mobile apps or curl requests)
     if (!origin || ALLOWED_ORIGINS.includes(origin) || NODE_ENV === 'development') {
       callback(null, true);
@@ -119,19 +123,22 @@ app.use((err, req, res, next) => {
   });
 });
 
-// Serve static files from the React app
-app.use(express.static(path.join(__dirname, 'public')));
+// Start server
+const server = app.listen(PORT, () => console.log(`🚀 Server is now running on port ${PORT}`));
 
-// Handle React routing, return all requests to React app
-app.get('*', (req, res) => {
-  if (req.path.startsWith('/api/')) {
-    next();
-  } else {
-    res.sendFile(path.join(__dirname, 'public', 'index.html'));
-  }
+// Handle uncaught exceptions
+process.on('uncaughtException', (err) => {
+  console.error('Uncaught Exception:', err);
+  process.exit(1);
 });
 
-app.listen(PORT, () => console.log(`🚀 Server is now running on port ${PORT}`));
+// Handle unhandled promise rejections
+process.on('unhandledRejection', (err) => {
+  console.error('Unhandled Rejection:', err);
+  server.close(() => {
+    process.exit(1);
+  });
+});
 
 // Graceful shutdown
 process.on('SIGTERM', () => {

@@ -1,16 +1,32 @@
-const nodemailer = require('nodemailer');
+// Mock email service for when nodemailer is not available
+const mockEmailService = {
+  sendMail: async (options) => {
+    console.log('Email notification would be sent (mock):', {
+      to: options.to,
+      subject: options.subject,
+    });
+    return Promise.resolve();
+  }
+};
 
 class EmailService {
   constructor() {
-    this.transporter = nodemailer.createTransport({
-      host: process.env.SMTP_HOST,
-      port: process.env.SMTP_PORT,
-      secure: false,
-      auth: {
-        user: process.env.SMTP_USER,
-        pass: process.env.SMTP_PASS,
-      },
-    });
+    try {
+      const nodemailer = require('nodemailer');
+      this.transporter = nodemailer.createTransport({
+        host: process.env.SMTP_HOST,
+        port: process.env.SMTP_PORT,
+        secure: false,
+        auth: {
+          user: process.env.SMTP_USER,
+          pass: process.env.SMTP_PASS,
+        },
+      });
+      console.log('Email service initialized successfully');
+    } catch (error) {
+      console.warn('Using mock email service:', error.message);
+      this.transporter = mockEmailService;
+    }
   }
 
   generateCloudinaryUrl(url) {

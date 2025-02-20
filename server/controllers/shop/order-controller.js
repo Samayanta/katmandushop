@@ -4,8 +4,6 @@ const Cart = require("../../models/Cart");
 const Product = require("../../models/Product");
 const User = require("../../models/User");
 const mongoose = require("mongoose");
-const emailService = require("../../helpers/email-service");
-
 const createOrder = async (req, res) => {
   try {
     const {
@@ -154,31 +152,37 @@ const capturePayment = async (req, res) => {
         throw new Error('User not found');
       }
 
-      // Send notifications
-      if (verificationData.status === "Completed") {
-        try {
-          // Send email to admin
-          await emailService.sendOrderNotification(
-            order,
-            user.email,
-            user.userName,
-            false // isClientEmail = false
-          );
-          console.log('Admin notification email sent');
+          // Send notifications
+          if (verificationData.status === "Completed") {
+            try {
+              const emailService = require("../../helpers/email-service");
 
-          // Send email to customer
-          await emailService.sendOrderNotification(
-            order,
-            user.email,
-            user.userName,
-            true // isClientEmail = true
-          );
-          console.log('Client notification email sent');
-        } catch (emailError) {
-          console.error('Failed to send notification email(s):', emailError);
-          // Don't throw error here to avoid affecting the response
-        }
-      }
+              // Try to send email notifications, but don't block if they fail
+              try {
+                // Send email to admin
+                await emailService.sendOrderNotification(
+                  order,
+                  user.email,
+                  user.userName,
+                  false // isClientEmail = false
+                );
+                console.log('Admin notification email sent');
+
+                // Send email to customer
+                await emailService.sendOrderNotification(
+                  order,
+                  user.email,
+                  user.userName,
+                  true // isClientEmail = true
+                );
+                console.log('Client notification email sent');
+              } catch (emailError) {
+                console.warn('Email notifications skipped:', emailError.message);
+              }
+            } catch (moduleError) {
+              console.warn('Email module not available:', moduleError.message);
+            }
+          }
 
       res.status(200).json({
         success: true,

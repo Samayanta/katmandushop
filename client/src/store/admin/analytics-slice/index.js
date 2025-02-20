@@ -7,11 +7,12 @@ const initialState = {
   error: null,
 };
 
+
 export const getAnalytics = createAsyncThunk(
   "analytics/getAnalytics",
   async ({ startDate, endDate }) => {
     const response = await axios.get(
-      `http://localhost:5001/api/admin/analytics`,
+      `${import.meta.env.VITE_API_URL}/api/admin/analytics`,
       {
         params: { startDate, endDate }
       }
