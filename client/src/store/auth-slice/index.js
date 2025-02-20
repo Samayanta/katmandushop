@@ -70,7 +70,7 @@ export const logoutUser = createAsyncThunk(
   async (_, { rejectWithValue }) => {
     try {
       const response = await axios.post(
-        `${import.meta.env.VITE_API_URL}/api/auth/logout`,
+        `${import.meta.env.VITE_API_URL}/auth/logout`,
         {},
         {
           withCredentials: true,
@@ -98,7 +98,7 @@ export const checkAuth = createAsyncThunk(
   async (_, { rejectWithValue }) => {
     try {
       const response = await axios.get(
-        `${import.meta.env.VITE_API_URL}/api/auth/check-auth`,
+        `${import.meta.env.VITE_API_URL}/auth/check-auth`,
         {
           withCredentials: true,
           headers: {

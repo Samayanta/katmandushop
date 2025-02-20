@@ -42,7 +42,7 @@ function ProductImageUpload({
     data.append("my_file", imageFile);
     try {
       const response = await axios.post(
-        `${import.meta.env.VITE_API_URL}/api/admin/products/upload-image`,
+        `${import.meta.env.VITE_API_URL}/admin/products/upload-image`,
         data
       );
       console.log(response, "response");
@@ -62,7 +62,7 @@ function ProductImageUpload({
     
     try {
       const publicId = uploadedImageUrl.split('/').pop().split('.')[0];
-      await axios.delete(`${import.meta.env.VITE_API_URL}/api/admin/products/delete-image`, {
+      await axios.delete(`${import.meta.env.VITE_API_URL}/admin/products/delete-image`, {
         data: { publicId }
       });
       setUploadedImageUrl(null);
