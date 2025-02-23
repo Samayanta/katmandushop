@@ -1,14 +1,8 @@
 import { Button } from "@/components/ui/button";
 import SEO from "@/components/common/seo";
-import {
-  ChevronLeftIcon,
-  ChevronRightIcon,
-  CloudLightning,
-  Images,
-  ShirtIcon,
-  UmbrellaIcon,
-  WatchIcon,
-} from "lucide-react";
+import { ChevronLeftIcon, ChevronRightIcon } from "lucide-react";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { faPerson, faPersonDress, faBottleWater, faShoePrints, faRug } from "@fortawesome/free-solid-svg-icons";
 import { Card, CardContent } from "@/components/ui/card";
 import { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
@@ -24,11 +18,11 @@ import ProductDetailsDialog from "@/components/shopping-view/product-details";
 import { getFeatureImages } from "@/store/common-slice";
 
 const categoriesWithIcon = [
-  { id: "mens", label: "Mens", icon: ShirtIcon },
-  { id: "womens", label: "Womens", icon: CloudLightning },
-  { id: "accessories", label: "Accessories", icon: WatchIcon },
-  { id: "footwear", label: "Footwear", icon: UmbrellaIcon },
-  { id: "pashmina", label: "Pashmina", icon: Images },
+  { id: "mens", label: "Mens", icon: () => <FontAwesomeIcon icon={faPerson} /> },
+  { id: "womens", label: "Womens", icon: () => <FontAwesomeIcon icon={faPersonDress} /> },
+  { id: "accessories", label: "Accessories", icon: () => <FontAwesomeIcon icon={faBottleWater} /> },
+  { id: "footwear", label: "Footwear", icon: () => <FontAwesomeIcon icon={faShoePrints} /> },
+  { id: "pashmina", label: "Pashmina", icon: () => <FontAwesomeIcon icon={faRug} /> },
 ];
 
 function ShoppingHome() {
@@ -108,14 +102,13 @@ function ShoppingHome() {
         <div className="relative w-full h-[600px] overflow-hidden">
           {featureImageList && featureImageList.length > 0
             ? featureImageList.map((slide, index) => (
-                <img
-                  src={slide?.image}
-                  key={index}
-                  className={`${
-                    index === currentSlide ? "opacity-100" : "opacity-0"
+              <img
+                src={slide?.image}
+                key={index}
+                className={`${index === currentSlide ? "opacity-100" : "opacity-0"
                   } absolute top-0 left-0 w-full h-full object-cover transition-opacity duration-1000`}
-                />
-              ))
+              />
+            ))
             : null}
           <Button
             variant="outline"
@@ -177,13 +170,13 @@ function ShoppingHome() {
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
               {productList && productList.length > 0
                 ? productList.map((productItem) => (
-                    <ShoppingProductTile
-                      key={productItem.id}
-                      handleGetProductDetails={handleGetProductDetails}
-                      product={productItem}
-                      handleAddtoCart={handleAddtoCart}
-                    />
-                  ))
+                  <ShoppingProductTile
+                    key={productItem.id}
+                    handleGetProductDetails={handleGetProductDetails}
+                    product={productItem}
+                    handleAddtoCart={handleAddtoCart}
+                  />
+                ))
                 : null}
             </div>
           </div>
